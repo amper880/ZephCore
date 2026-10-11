@@ -979,6 +979,11 @@ Single button; tap-count → key-code mapping comes from the board's devicetree 
 - 4 taps → GPS toggle
 - 5 taps → Flood advert (immediate, no delay)
 
+Boards with a display also map a 1 s hold to `KEY_ENTER` (a `zephyr,input-longpress` filter), which runs the item on
+the page. Offgrid, DFU and Power Off act on a second ENTER inside `CONFIG_ZEPHCORE_UI_CONFIRM_WINDOW_MS`. The default
+of 500 ms is for a direct-tap ENTER; a board whose ENTER is a long press must set 3000 in its `board.conf`, or the
+confirmation can never be given.
+
 ### 8.4 Buzzer and vibration
 
 Non-blocking RTTTL parser on dedicated work queue. Predefined melodies for startup, shutdown, messages, ACKs. 2-second safety watchdog auto-silences on work queue stall.

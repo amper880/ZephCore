@@ -34,8 +34,25 @@
 			 * defined: it is also a light-sleep wake pin. */
 			gpios = <&gpio1 6 (GPIO_ACTIVE_LOW | GPIO_PULL_UP)>;  /* GPIO38 = gpio1 pin 6 */
 			label = "User Button";
-			zephyr,code = <INPUT_BTN_0>;
+			zephyr,code = <INPUT_KEY_0>;
 		};
+	};
+
+	/* Button chain — same mapping as RAK4631 / WisMesh Pocket (rak4631/board.overlay). */
+	user_btn_longpress {
+		compatible = "zephyr,input-longpress";
+		input = <&buttons>;
+		input-codes = <INPUT_KEY_0>;
+		short-codes = <INPUT_KEY_A>;
+		long-codes = <INPUT_KEY_ENTER>;
+		long-delay-ms = <1000>;
+	};
+
+	page_btn_multitap {
+		compatible = "zephcore,input-multi-tap";
+		input-codes = <INPUT_KEY_A>;
+		tap-codes = <INPUT_KEY_1 INPUT_KEY_LEFT>;
+		tap-delay-ms = <400>;
 	};
 };
 

@@ -167,6 +167,9 @@ backwards.
 | | | hold 1 s | page enter |
 | Function (S2) | P0.14 | press | page previous |
 
+Offgrid, DFU and Power Off ask for confirmation: hold the user button again
+within 3 s. A tap instead pages on.
+
 The datasheet calls P1.10 "Button1 / USER key" and P0.14 "Button2 / Function
 key"; the schematic silkscreen labels are the other way round (S2 = "User1" on
 P0.14, S3 = "User2" on P1.10). Pins are what matter.
