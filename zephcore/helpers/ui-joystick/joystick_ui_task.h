@@ -24,6 +24,7 @@
 #include <helpers/ContactInfo.h>
 #include <helpers/ChannelDetails.h>
 #include <helpers/NodePrefs.h>
+#include <helpers/OffgridPolicy.h>
 #include <adapters/clock/ZephyrRTCClock.h>
 
 #include <zephyr/kernel.h>
@@ -125,7 +126,10 @@ public:
 	bool isSerialEnabled() const { return _ble_enabled; }
 	void disableSerial();
 	void enableSerial();
-	bool isOffgridEnabled() const { return _prefs && _prefs->client_repeat != 0; }
+	bool isOffgridEnabled() const { return _prefs && mesh::offgridActive(*_prefs); }
+	/* kHz that turning it on leads to (the current one if already off-grid);
+	 * 0 = no off-grid frequency for this band. */
+	uint32_t offgridTargetKhz() const { return _prefs ? mesh::nearestOffgridFreqKhz(_prefs->freq) : 0; }
 	void setOffgridMode(bool enable);
 	bool isLedsDisabled() const { return _prefs && _prefs->leds_disabled != 0; }
 	void toggleLeds();

@@ -305,7 +305,7 @@ static void action_page_enter(void)
 			st_og->offgrid_confirm_time = 0;
 			mesh_set_offgrid_mode(new_state);
 			LOG_INF("offgrid mode %s (button)", new_state ? "on" : "off");
-		} else {
+		} else if (st_og->offgrid_enabled || mesh_offgrid_available()) {
 			/* First press — enter confirmation state */
 			st_og->offgrid_confirm_time = now_og;
 		}
@@ -1135,8 +1135,12 @@ void ui_set_buzzer_mode(uint8_t mode)
 void ui_set_offgrid_mode(bool enabled)
 {
 	struct ui_state *s = get_state();
+	bool changed = s->offgrid_enabled != enabled;
 
 	s->offgrid_enabled = enabled;
+	if (changed) {
+		schedule_render_auto();
+	}
 }
 
 /* Schedule a redraw for an automatic (non-interactive) state update, e.g. a

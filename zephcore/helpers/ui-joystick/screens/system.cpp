@@ -169,6 +169,8 @@ bool SystemScreen::handleInput(char c)
 				if (_task->isOffgridEnabled()) {
 					_task->setOffgridMode(false);
 					_task->showAlert("Offgrid: OFF", 1000);
+				} else if (_task->offgridTargetKhz() == 0) {
+					_task->showAlert("No offgrid band", 1500);
 				} else {
 					_mode = SYSMODE_OFFGRID_CONFIRM;
 				}
@@ -278,8 +280,12 @@ bool SystemScreen::handleInput(char c)
 	}
 	if (_mode == SYSMODE_OFFGRID_CONFIRM) {
 		if (c == KEY_ENTER) {
+			char og_alert[24];
+			uint32_t og_khz = _task->offgridTargetKhz();
+			snprintf(og_alert, sizeof(og_alert), "Offgrid ON %u.%03u",
+				 (unsigned)(og_khz / 1000), (unsigned)(og_khz % 1000));
 			_task->setOffgridMode(true);
-			_task->showAlert("Offgrid: ON", 1000);
+			_task->showAlert(og_alert, 1500);
 			_mode = SYSMODE_DEVICE;
 			return true;
 		}

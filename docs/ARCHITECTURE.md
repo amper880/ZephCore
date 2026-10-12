@@ -604,6 +604,13 @@ Handles the binary BLE protocol with ~50 command opcodes. Key features:
 - **Protocol versioning**: V2/V3 frame format negotiation with phone app
 - **Ed25519 signing**: 3-phase flow (start→data→finish) for signing up to 8KB
 - **Flood scope**: Transport key filtering for region-scoped sends
+- **Off-grid mode** (upstream "client repeat", user view in `OFFGRID.md`): the companion forwards, unfiltered, only
+  while `client_repeat` is set **and** `prefs.freq` is one of upstream's off-grid frequencies (433.000 / 869.495 /
+  918.000 MHz). `helpers/OffgridPolicy.h` holds that rule and the prefs transitions; `allowPacketForward()`, the
+  boot-time load, `CMD_DEVICE_QUERY` byte 80 and both device UIs go through it. The app's `CMD_SET_RADIO_PARAMS`
+  sets frequency and flag together, as upstream. The device toggle and the companion's `set repeat` call
+  `CompanionMesh::setOffgridMode()`: on = nearest off-grid frequency, the one left kept in `zc.og_home`; off = back
+  to it. BW, SF, CR and TX power are never touched
 
 ### 6.2.1 V-Contact (Loopback Admin Contact)
 

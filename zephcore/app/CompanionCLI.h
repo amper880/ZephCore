@@ -129,6 +129,18 @@ public:
 		(void)freq; (void)bw; (void)sf; (void)cr; (void)timeout_mins;
 	}
 
+	/* `get repeat` / `set repeat`: off-grid mode, the same call as the device toggle. */
+	bool hasOffgridMode() const override { return true; }
+	bool isOffgridActive() const override { return _mesh.isOffgridActive(); }
+	void setOffgridMode(bool on, char* reply) override {
+		if (_mesh.setOffgridMode(on) == mesh::OFFGRID_NO_BAND) {
+			strcpy(reply, "Error: no off-grid frequency for this band");
+		} else {
+			snprintf(reply, CLI_REPLY_SIZE, "OK - repeat is now %s (%.3f MHz)",
+				 _mesh.isOffgridActive() ? "ON" : "OFF", (double)_mesh.prefs.freq);
+		}
+	}
+
 	MeshTimeSync* getMeshTimeSync() override {
 		return _mesh.getMeshTimeSync();
 	}

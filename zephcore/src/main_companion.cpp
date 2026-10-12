@@ -982,6 +982,11 @@ int main(void)
 	companion_mesh.prefs.gps_interval = CONFIG_ZEPHCORE_GPS_POLL_INTERVAL_SEC; /* 0 = always on */
 
 	data_store.loadPrefs(companion_mesh.prefs);
+	/* A repeat flag stored on a non-off-grid frequency is dropped. */
+	if (mesh::offgridNormalize(companion_mesh.prefs)) {
+		LOG_WRN("offgrid mode dropped: not on an off-grid frequency");
+		data_store.savePrefs(companion_mesh.prefs);
+	}
 	/* ESP32 light sleep: `powersaving off` holds a sleep lock. No-op elsewhere. */
 	zc_pm_set_powersaving(companion_mesh.prefs.powersaving_enabled != 0);
 	/* Until the first fix, the position is the configured one. */
@@ -1071,9 +1076,9 @@ int main(void)
 	ui_set_gps_enabled(companion_mesh.prefs.gps_enabled != 0);
 	ui_set_ble_enabled(companion_mesh.prefs.ble_disabled != 1);  /* BLE starts advertising at boot */
 
-	ui_set_offgrid_mode(companion_mesh.prefs.client_repeat != 0);
+	ui_set_offgrid_mode(companion_mesh.isOffgridActive());
 	LOG_INF("offgrid mode: %s (from prefs)",
-		companion_mesh.prefs.client_repeat ? "on" : "off");
+		companion_mesh.isOffgridActive() ? "on" : "off");
 
 	/* buzzer_init() starts quiet, so the saved mode is always applied. */
 #if IS_ENABLED(CONFIG_ZEPHCORE_UI_BUZZER)

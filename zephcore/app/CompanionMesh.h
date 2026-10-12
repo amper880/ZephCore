@@ -11,6 +11,7 @@
 #include <helpers/TransportKeyStore.h>
 #include <ZephyrDataStore.h>
 #include <NodePrefs.h>
+#include <helpers/OffgridPolicy.h>
 #include <zephyr/kernel.h>
 
 /* Push notification codes */
@@ -200,6 +201,13 @@ public:
 	 * every reboot and power-off path reaches it through
 	 * zephcore_persist_before_off(). */
 	void flushPendingWrites() { flushDirtyContacts(); flushDirtyChannels(); }
+
+	/* Off-grid mode (upstream "client repeat"): forwarding, allowed only on the
+	 * off-grid frequencies.  setOffgridMode() is the device toggle and the CLI's
+	 * `set repeat`: it retunes to the nearest off-grid frequency and back, saves,
+	 * and reconfigures the radio.  Main thread only. */
+	bool isOffgridActive() const;
+	mesh::OffgridResult setOffgridMode(bool on);
 
 	NodePrefs prefs;
 

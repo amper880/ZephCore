@@ -16,6 +16,7 @@
 
 #include "ui_pages.h"
 #include "ui_task.h"
+#include "ui_mesh_actions.h"
 #include "display.h"
 #include <helpers/buzzer_gate.h>
 
@@ -1391,8 +1392,9 @@ static void render_offgrid_mono(void)
 		draw_centered(centered_row(2, 3), "Press to confirm");
 	} else {
 		draw_centered(centered_row(2, 3),
-				  state.offgrid_enabled ? "Press to Disable"
-							: "Press to Enable");
+				  state.offgrid_enabled ? "Press to Disable" :
+				  mesh_offgrid_available() ? "Press to Enable"
+							   : "Not on this band");
 	}
 }
 
@@ -1417,8 +1419,9 @@ static void render_offgrid_color(void)
 	draw_centered_color(y,
 			    state.offgrid_confirm_time != 0 ?
 				    "Press to confirm" :
-				    (state.offgrid_enabled ? "Press to disable"
-							   : "Press to enable"),
+				    (state.offgrid_enabled ? "Press to disable" :
+				     mesh_offgrid_available() ? "Press to enable"
+							      : "Not on this band"),
 			    state.offgrid_confirm_time != 0 ? UI_COLOR_WARN
 							    : UI_COLOR_VALUE);
 }

@@ -190,9 +190,14 @@ extern "C" void mesh_set_buzzer_mode(uint8_t mode)
 	k_event_post(s_mesh_events, s_mesh_event_ui_action);
 }
 
+extern "C" bool mesh_offgrid_available(void)
+{
+	return s_mesh && mesh::nearestOffgridFreqKhz(s_mesh->prefs.freq) != 0;
+}
+
 extern "C" void mesh_set_offgrid_mode(bool enable)
 {
-	/* Defer the flash write (savePrefs) to mesh thread */
+	/* Defer the retune and the flash write to mesh thread */
 	atomic_set(&pending_offgrid_enabled, enable ? 1 : 0);
 	atomic_or(&pending_ui_actions, UI_ACTION_OFFGRID_TOGGLE);
 	k_event_post(s_mesh_events, s_mesh_event_ui_action);
@@ -254,9 +259,10 @@ extern "C" void mesh_handle_ui_actions(void)
 
 	if (actions & UI_ACTION_OFFGRID_TOGGLE) {
 		bool og = atomic_get(&pending_offgrid_enabled) != 0;
-		s_mesh->prefs.client_repeat = og ? 1 : 0;
-		LOG_INF("client_repeat=%d (button)", og);
-		need_save = true;
+		/* Saves and retunes by itself; the page shows what it ended up as. */
+		s_mesh->setOffgridMode(og);
+		ui_set_offgrid_mode(s_mesh->isOffgridActive());
+		ui_push_radio_state(*s_lora_radio);
 	}
 
 	if (actions & UI_ACTION_LEDS_TOGGLE) {
@@ -349,6 +355,8 @@ extern "C" void mesh_housekeeping_ui_refresh(void)
 	ui_set_tz(s_mesh->prefs.tz_offset);
 
 	ui_push_radio_state(*s_lora_radio);
+	/* The app and the CLI change it too. */
+	ui_set_offgrid_mode(s_mesh->isOffgridActive());
 
 	/* Update GPS satellite count even without fix. When GPS is disabled, push
 	 * a zeroed count — gps_enable(false) already zeros the internal count, but

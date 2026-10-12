@@ -1050,7 +1050,7 @@ void JoystickUITask::disableSerial() { _ble_enabled = false; mesh_ble_set_enable
 /* ===== Offgrid / LEDs / DFU ===== */
 void JoystickUITask::setOffgridMode(bool enable)
 {
-	if (_prefs) _prefs->client_repeat = enable ? 1 : 0;
+	/* CompanionMesh::setOffgridMode() does the prefs and the retune. */
 	mesh_set_offgrid_mode(enable);
 }
 

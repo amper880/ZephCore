@@ -1,5 +1,6 @@
 #include "test.h"
 #include <RoutingPolicy.h>
+#include <OffgridPolicy.h>
 #include <RateLimiter.h>
 #include <mesh/Maintenance.h>
 using namespace mesh;
@@ -46,4 +47,74 @@ TEST(maintenance_wrap, "UNIT-TIME-001", "Maintenance deadlines across uint32 wra
     CHECK(maintenanceUntil(0x10u, 0xFFFFFFF0u) == 0);
     CHECK(maintenanceSooner(MAINTENANCE_IDLE, 32) == 32);
     CHECK(maintenanceSooner(0, MAINTENANCE_IDLE) == 0);
+}
+
+namespace {
+NodePrefs offgridPrefs(float freq, uint8_t repeat = 0, float home = 0.0f) {
+    NodePrefs p{};
+    p.freq = freq; p.bw = 62.5f; p.sf = 7; p.cr = 5; p.tx_power_dbm = 22;
+    p.client_repeat = repeat; p.offgrid_home_freq = home;
+    return p;
+}
+}  // namespace
+
+TEST(offgrid_freq_pick, "UNIT-OFFGRID-001", "Off-grid frequency: the three allowed, nearest per band, none above sub-GHz") {
+    CHECK(isOffgridFreq(433.0f) && isOffgridFreq(869.495f) && isOffgridFreq(918.0f));
+    CHECK(!isOffgridFreq(869.618f) && !isOffgridFreq(869.494f) && !isOffgridFreq(910.525f));
+    CHECK(isOffgridFreqKhz(869495) && !isOffgridFreqKhz(869496));
+    CHECK(nearestOffgridFreqKhz(869.618f) == 869495);
+    CHECK(nearestOffgridFreqKhz(868.1f) == 869495);
+    CHECK(nearestOffgridFreqKhz(910.525f) == 918000);
+    CHECK(nearestOffgridFreqKhz(927.875f) == 918000);
+    CHECK(nearestOffgridFreqKhz(433.875f) == 433000);
+    CHECK(nearestOffgridFreqKhz(150.0f) == 433000);
+    CHECK(nearestOffgridFreqKhz(869.495f) == 869495);
+    CHECK(nearestOffgridFreqKhz(2445.0f) == 0);
+    CHECK(nearestOffgridFreqKhz(0.0f) == 0);
+}
+TEST(offgrid_toggle, "UNIT-OFFGRID-002", "Off-grid toggle: to the off-grid frequency and back, preset otherwise untouched") {
+    NodePrefs p = offgridPrefs(869.618f);
+    CHECK(!offgridActive(p));
+    CHECK(offgridSet(p, true) == OFFGRID_RETUNED);
+    CHECK(offgridActive(p) && p.freq == 869.495f && p.offgrid_home_freq == 869.618f);
+    CHECK(p.bw == 62.5f && p.sf == 7 && p.cr == 5 && p.tx_power_dbm == 22);
+    CHECK(offgridSet(p, true) == OFFGRID_UNCHANGED);
+    CHECK(offgridSet(p, false) == OFFGRID_RETUNED);
+    CHECK(!offgridActive(p) && p.freq == 869.618f && p.offgrid_home_freq == 0.0f && p.client_repeat == 0);
+    CHECK(offgridSet(p, false) == OFFGRID_UNCHANGED);
+
+    // Already on an off-grid frequency (the app left it there): flag only, both ways.
+    p = offgridPrefs(918.0f);
+    CHECK(offgridSet(p, true) == OFFGRID_SET);
+    CHECK(offgridActive(p) && p.freq == 918.0f && p.offgrid_home_freq == 0.0f);
+    CHECK(offgridSet(p, false) == OFFGRID_SET);
+    CHECK(!offgridActive(p) && p.freq == 918.0f);
+
+    // No off-grid frequency on 2.4 GHz: refused, nothing changes.
+    p = offgridPrefs(2445.0f);
+    CHECK(offgridSet(p, true) == OFFGRID_NO_BAND);
+    CHECK(p.client_repeat == 0 && p.freq == 2445.0f && p.offgrid_home_freq == 0.0f);
+}
+TEST(offgrid_normalize, "UNIT-OFFGRID-003", "Off-grid: a repeat flag on a mesh frequency is dropped, app and CLI edits drop the home frequency") {
+    // What the pre-1.17.8 device toggle left behind.
+    NodePrefs p = offgridPrefs(869.618f, 1);
+    CHECK(!offgridActive(p));
+    CHECK(offgridNormalize(p) && p.client_repeat == 0 && p.freq == 869.618f);
+    CHECK(!offgridNormalize(p));
+    // Off-grid mode on is left alone, home frequency included.
+    p = offgridPrefs(869.495f, 1, 869.618f);
+    CHECK(!offgridNormalize(p) && offgridActive(p) && p.offgrid_home_freq == 869.618f);
+    // The app turned repeat off and stayed on the off-grid frequency.
+    p = offgridPrefs(869.495f, 0, 869.618f);
+    offgridFreqEdited(p);
+    CHECK(p.offgrid_home_freq == 0.0f && p.freq == 869.495f && p.client_repeat == 0);
+    // The app moved to another off-grid frequency with repeat on: stays on, home gone.
+    p = offgridPrefs(433.0f, 1, 869.618f);
+    offgridFreqEdited(p);
+    CHECK(offgridActive(p) && p.offgrid_home_freq == 0.0f);
+    CHECK(offgridSet(p, false) == OFFGRID_SET && p.freq == 433.0f);
+    // The CLI set a mesh frequency while off-grid mode was on: off, and nothing to return to.
+    p = offgridPrefs(868.0f, 1, 869.618f);
+    offgridFreqEdited(p);
+    CHECK(p.client_repeat == 0 && p.offgrid_home_freq == 0.0f && p.freq == 868.0f);
 }

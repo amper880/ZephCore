@@ -86,6 +86,9 @@ All of this is local behaviour. Nothing here changes the wire protocol, so mixed
 - **LEDs you control.** Turn them all off with `set leds off`, or choose what each one shows: blink on
   transmit, on receive or both, and a heartbeat that can signal unread messages. The receive blink tells
   you at a glance whether a repeater is hearing anything.
+- **Off-grid mode from the device.** A companion can relay for a group of handhelds out of reach of any
+  repeater. Switch it on from the display or the CLI and the node moves to the off-grid frequency of its
+  band and back by itself. ([OFFGRID.md](docs/OFFGRID.md))
 - **2.4 GHz on LR2021 boards.** Set a 2.4 GHz frequency and the radio switches to its high-band path on
   its own.
 - **Runs on Linux too.** The same code runs as a normal process on a Raspberry Pi or Femtofox with a real
@@ -169,6 +172,7 @@ ZephCore is a plain west workspace application, and it tries to be a well-behave
 | [adr/](docs/adr/README.md) | Decisions and why they were made |
 | [BUILDING.md](docs/BUILDING.md) | Every build variant, platform notes, Kconfig options |
 | [CLI_commands.md](docs/CLI_commands.md) | Every CLI command |
+| [OFFGRID.md](docs/OFFGRID.md) | Off-grid mode: a companion that relays, and the frequencies it runs on |
 | [supported_boards.md](docs/supported_boards.md) | Boards and build strings |
 | [LINUX_NATIVE.md](docs/LINUX_NATIVE.md) | Running on a Pi or Femtofox |
 | [releasenotes/](releasenotes/) | What changed in each release |

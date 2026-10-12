@@ -168,6 +168,9 @@ struct NodePrefs {
 	uint8_t buzzer_quiet;
 	uint8_t autoadd_config;
 	uint8_t client_repeat;          // 1 = offgrid mode (forward packets)
+	/* MHz the device toggle left when it turned off-grid mode on, 0 = none.
+	 * Only meaningful while off-grid mode is on (helpers/OffgridPolicy.h). */
+	float offgrid_home_freq;
 	uint8_t path_hash_mode;         // path mode 0-2
 	uint8_t autoadd_max_hops;       // 0 = no limit, N = up to N-1 hops
 	uint8_t loop_detect;            // LOOP_DETECT_{OFF,MINIMAL,MODERATE,STRICT}
@@ -277,6 +280,8 @@ static inline void sanitizeNodePrefs(NodePrefs* p) {
 	p->airtime_factor = sanePrefFloat(p->airtime_factor, 0.0f, 9.0f, 9.0f);
 	p->rx_delay_base  = sanePrefFloat(p->rx_delay_base, 0.0f, 3600.0f, 0.0f);
 	p->adc_multiplier = sanePrefFloat(p->adc_multiplier, 0.0f, 30000.0f, 0.0f);
+	p->offgrid_home_freq = sanePrefFloat(p->offgrid_home_freq, ZC_RADIO_FREQ_MIN_MHZ,
+					      ZC_RADIO_FREQ_MAX_MHZ, 0.0f);
 	/* Range matches the CLI (0.0-2.0).  0.0 is a legal value meaning "reactive
 	 * backoff off" and must survive: this guard exists for NaN and corruption
 	 * only.  RepeaterDataStore used to coerce 0.0 -> 0.2 here, which silently

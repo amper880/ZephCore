@@ -47,7 +47,7 @@ NodePrefs sample() {
     for (int i = 0; i < 16; i++) p.default_scope_key[i] = (uint8_t)(i + 1);
     p.ble_disabled = 1; p.display_brightness = 50; p.wake_on_msg = 0; p.screen_off_secs = 60;
     p.auto_shutdown_mv = 3300; p.v_contact_enabled = 0; p.v_battery_alert_mv = 3500;
-    p.v_contact_flags = 0x81; p.wifi_enabled = 0;
+    p.v_contact_flags = 0x81; p.wifi_enabled = 0; p.offgrid_home_freq = 869.618f;
     strcpy(p.wifi_ssid, "MyNet"); strcpy(p.wifi_pwd, "secret");
     return p;
 }
@@ -75,6 +75,7 @@ TEST(pjson_companion_roundtrip, "UNIT-PJSON-001", "Companion prefs survive prefs
     CHECK(companionBytes(q) == companionBytes(p));
     // prefs.json only: not in the binary layout.
     CHECK(q.led_brightness == 42);
+    CHECK(q.offgrid_home_freq == 869.618f);
 }
 
 TEST(pjson_server_roundtrip, "UNIT-PJSON-002", "Server prefs survive prefs.json field for field") {

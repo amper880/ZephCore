@@ -144,6 +144,7 @@ protected:
 		def("vbat_mv", _p->v_battery_alert_mv);
 		def("adc_mult", _p->adc_multiplier);
 		def("pwr_sav_en", _p->powersaving_enabled);
+		def("og_home", _p->offgrid_home_freq);
 	}
 
 public:

@@ -39,27 +39,6 @@ static void notify_contact_msg_ui(
 }
 #endif
 
-/* Allowed client repeat frequency ranges (matches Arduino) */
-struct FreqRange {
-	uint32_t lower_freq, upper_freq;
-};
-
-static const FreqRange repeat_freq_ranges[] = {
-	{ 433000, 433000 },   /* 433 MHz (ISM band) */
-	{ 869495, 869495 },   /* 869.495 MHz (EU 869.4-869.65 band, 10% DC, 500mW ERP) */
-	{ 918000, 918000 },   /* 918 MHz (US ISM band) */
-};
-
-static bool isValidClientRepeatFreq(uint32_t f)
-{
-	for (size_t i = 0; i < sizeof(repeat_freq_ranges) / sizeof(repeat_freq_ranges[0]); i++) {
-		if (f >= repeat_freq_ranges[i].lower_freq && f <= repeat_freq_ranges[i].upper_freq) {
-			return true;
-		}
-	}
-	return false;
-}
-
 CompanionMesh::CompanionMesh(mesh::Radio &radio, mesh::MillisecondClock &ms, mesh::RNG &rng,
 	mesh::RTCClock &rtc, mesh::PacketManager &mgr, mesh::MeshTables &tables,
 	ZephyrDataStore &store)
@@ -143,7 +122,27 @@ void CompanionMesh::begin()
 bool CompanionMesh::allowPacketForward(const mesh::Packet *packet)
 {
 	(void)packet;
-	return prefs.client_repeat != 0;
+	return mesh::offgridActive(prefs);
+}
+
+bool CompanionMesh::isOffgridActive() const
+{
+	return mesh::offgridActive(prefs);
+}
+
+mesh::OffgridResult CompanionMesh::setOffgridMode(bool on)
+{
+	mesh::OffgridResult r = mesh::offgridSet(prefs, on);
+
+	if (r == mesh::OFFGRID_SET || r == mesh::OFFGRID_RETUNED) {
+		_store->savePrefs(prefs);
+	}
+	if (r == mesh::OFFGRID_RETUNED && _radio_reconfig_cb) {
+		_radio_reconfig_cb(true);
+	}
+	LOG_INF("offgrid %s: result=%d freq=%u kHz", on ? "on" : "off", (int)r,
+		(unsigned)mesh::offgridFreqKhz(prefs.freq));
+	return r;
 }
 
 void CompanionMesh::sendFloodScoped(const TransportKey &scope, mesh::Packet *pkt, uint32_t delay_millis)
@@ -1789,7 +1788,7 @@ bool CompanionMesh::handleCmdDeviceQuery(const uint8_t *data, size_t len)
 		memcpy(&rsp[8], fw_build, 12);
 		memcpy(&rsp[20], model, 40);
 		memcpy(&rsp[60], version, 20);
-		rsp[80] = prefs.client_repeat;  // v9+: offgrid mode state
+		rsp[80] = mesh::offgridActive(prefs) ? 1 : 0;  // v9+: offgrid mode state
 		rsp[81] = prefs.path_hash_mode;  // v10+: path hash mode
 		writeFrame(rsp, sizeof(rsp));
 		return true;
@@ -2439,7 +2438,7 @@ bool CompanionMesh::handleCmdSetRadioParams(const uint8_t *data, size_t len)
 			repeat = data[11];  // v9+: client repeat flag
 		}
 		// If repeat requested, validate frequency against allowed bands
-		if (repeat && !isValidClientRepeatFreq(freq)) {
+		if (repeat && !mesh::isOffgridFreqKhz(freq)) {
 			writeErrFrame(ERR_ILLEGAL_ARG);
 		/* freq arrives in kHz, bw in Hz. Same limits as the USB
 		 * CLI and the prefs loader — see NodePrefs.h. Accepting
@@ -2464,6 +2463,7 @@ bool CompanionMesh::handleCmdSetRadioParams(const uint8_t *data, size_t len)
 			prefs.sf = sf;
 			prefs.cr = cr;
 			prefs.client_repeat = repeat;
+			mesh::offgridFreqEdited(prefs);
 			_store->savePrefs(prefs);
 			if (_radio_reconfig_cb) _radio_reconfig_cb(preset_changed);
 			LOG_INF("SET_RADIO_PARAMS: client_repeat=%d", repeat);
@@ -3392,12 +3392,12 @@ bool CompanionMesh::handleCmdGetAutoaddConfig(const uint8_t *data, size_t len)
 
 bool CompanionMesh::handleCmdGetAllowedRepeatFreq(const uint8_t *data, size_t len)
 {
-	uint8_t rsp[1 + sizeof(repeat_freq_ranges)];
+	uint8_t rsp[1 + sizeof(mesh::OFFGRID_FREQ_RANGES)];
 	int i = 0;
 	rsp[i++] = PACKET_ALLOWED_REPEAT_FREQ;
-	for (size_t k = 0; k < sizeof(repeat_freq_ranges) / sizeof(repeat_freq_ranges[0]); k++) {
-		put_le32(&rsp[i], repeat_freq_ranges[k].lower_freq); i += 4;
-		put_le32(&rsp[i], repeat_freq_ranges[k].upper_freq); i += 4;
+	for (const mesh::OffgridFreqRange &r : mesh::OFFGRID_FREQ_RANGES) {
+		put_le32(&rsp[i], r.lower_khz); i += 4;
+		put_le32(&rsp[i], r.upper_khz); i += 4;
 	}
 	writeFrame(rsp, i);
 	return true;

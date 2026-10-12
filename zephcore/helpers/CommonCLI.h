@@ -79,6 +79,12 @@ public:
 	 * _prefs takes the new ones for the next boot. No-op under tempradio. */
 	virtual void freezeRadioParams(float freq, float bw, uint8_t sf, uint8_t cr) { (void)freq; (void)bw; (void)sf; (void)cr; }
 
+	/* Companion: `get repeat` / `set repeat` are off-grid mode, not the
+	 * servers' repeat pref. setOffgridMode() writes the reply. */
+	virtual bool hasOffgridMode() const { return false; }
+	virtual bool isOffgridActive() const { return false; }
+	virtual void setOffgridMode(bool on, char* reply) { (void)on; (void)reply; }
+
 	// Adaptive contention window
 	virtual float getContentionEstimate() const { return -1.0f; }
 	virtual float getFloodDelayFactor() const { return 0.5f; }

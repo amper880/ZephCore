@@ -353,6 +353,21 @@
       "source": "tests/unit/policy_tests.cpp"
     },
     {
+      "id": "UNIT-OFFGRID-001",
+      "name": "Off-grid frequency: the three allowed, nearest per band, none above sub-GHz",
+      "source": "tests/unit/policy_tests.cpp"
+    },
+    {
+      "id": "UNIT-OFFGRID-002",
+      "name": "Off-grid toggle: to the off-grid frequency and back, preset otherwise untouched",
+      "source": "tests/unit/policy_tests.cpp"
+    },
+    {
+      "id": "UNIT-OFFGRID-003",
+      "name": "Off-grid: a repeat flag on a mesh frequency is dropped, app and CLI edits drop the home frequency",
+      "source": "tests/unit/policy_tests.cpp"
+    },
+    {
       "id": "UNIT-POOL-001",
       "name": "Exhaust reclaim and reuse all pool slots",
       "source": "tests/unit/pool_tests.cpp"

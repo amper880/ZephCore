@@ -13,6 +13,7 @@
 #include <helpers/ui/display.h>
 #endif
 #include <helpers/MeshTimeSync.h>
+#include <helpers/OffgridPolicy.h>
 #include <helpers/LoopWakeStats.h>
 extern "C" void power_diag_line(int n, char *out, size_t cap);  /* TEMPORARY: helpers/power_diag.c */
 #include <helpers/time_sync.h>
@@ -855,6 +856,7 @@ bool CommonCLI::handleRadioCmd(uint32_t sender_timestamp, const char* command, c
 				_prefs->bw   = bw;
 				_prefs->sf   = sf;
 				_prefs->cr   = cr;
+				mesh::offgridFreqEdited(*_prefs);
 				_callbacks->savePrefs();
 				_callbacks->freezeRadioParams(old_freq, old_bw, old_sf, old_cr);
 				/* Anything that moves the channel or the detPeak base table
@@ -920,6 +922,7 @@ bool CommonCLI::handleRadioCmd(uint32_t sender_timestamp, const char* command, c
 			    f >= 150.0f && f <= 2500.0f) {
 				float old_freq = _prefs->freq;
 				_prefs->freq = f;
+				mesh::offgridFreqEdited(*_prefs);
 				savePrefs();
 				/* Keep _prefs->freq = f in RAM so a later savePrefs() (from any
 				 * other "set" command before reboot) can't rewrite the old freq
@@ -1024,7 +1027,8 @@ void CommonCLI::handleGetCmd(uint32_t sender_timestamp, const char* command, cha
 	} else if (memcmp(config, "name", 4) == 0) {
 		snprintf(reply, CLI_REPLY_SIZE, "> %s", _prefs->node_name);
 	} else if (memcmp(config, "repeat", 6) == 0) {
-		snprintf(reply, CLI_REPLY_SIZE, "> %s", _prefs->disable_fwd ? "off" : "on");
+		bool on = _callbacks->hasOffgridMode() ? _callbacks->isOffgridActive() : !_prefs->disable_fwd;
+		snprintf(reply, CLI_REPLY_SIZE, "> %s", on ? "on" : "off");
 	} else if (memcmp(config, "lat", 3) == 0) {
 		snprintf(reply, CLI_REPLY_SIZE, "> %.6f", _prefs->node_lat);
 	} else if (memcmp(config, "lon", 3) == 0) {
@@ -1473,7 +1477,15 @@ void CommonCLI::handleSetCmd(uint32_t sender_timestamp, const char* command, cha
 			strcpy(reply, "Error: name cannot contain [ ] \\ : , ? *");
 		}
 	} else if (memcmp(config, "repeat ", 7) == 0) {
-		if (memcmp(&config[7], "on", 2) == 0) {
+		bool on = memcmp(&config[7], "on", 2) == 0;
+		if (_callbacks->hasOffgridMode() && (on || memcmp(&config[7], "off", 3) == 0)) {
+			/* Local only: it moves the node to another frequency. */
+			if (sender_timestamp == 0) {
+				_callbacks->setOffgridMode(on, reply);
+			} else {
+				strcpy(reply, "Error: local only");
+			}
+		} else if (on) {
 			_prefs->disable_fwd = 0;
 			savePrefs();
 			strcpy(reply, "OK - repeat is now ON");
