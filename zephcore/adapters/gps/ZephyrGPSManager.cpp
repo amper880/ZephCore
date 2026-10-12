@@ -71,17 +71,20 @@ enum gps_state {
 
 static enum gps_state gps_current_state = GPS_STATE_OFF;
 static uint8_t consecutive_good_fixes = 0;
-static bool first_fix_acquired = false;  /* True after first 3-good-fix cycle since enable. Cleared on gps_enable(false) and at boot. */
+static bool first_fix_acquired = false;  /* True after the first validated fix since enable. Cleared on gps_enable(false) and at boot. */
 static bool first_acquire_used = false;  /* True once the one-time long cold-start window has ended (fix or timeout). Cleared on gps_enable(false) and at boot. */
 static bool standby_powered_off = false; /* The last standby was the full power-off (interval past gps_standby_max_sec), so the wake after it is a cold start. Set on every standby, cleared on gps_enable(false). */
 static bool gps_time_synced = false;     /* True after GPS syncs RTC. Starts false at boot (RTC reset),
-										  * set true after 3 good fixes, cleared when GPS disabled. */
+										  * set true by a validated fix, cleared when GPS disabled. */
 static int64_t last_fix_uptime_ms = 0;  /* k_uptime when last validated fix was acquired */
 static int64_t standby_start_ms = 0;    /* k_uptime when standby started (for next-wake calc) */
 static uint64_t standby_interval_ms = 0; /* How long standby lasts (for next-wake calc) */
 
-#define GPS_GOOD_FIX_COUNT       3       /* Need 3 consecutive good fixes */
-#define GPS_MIN_SATELLITES       4       /* Minimum satellites for valid fix */
+/* A validated fix is GPS_GOOD_FIX_COUNT consecutive good fixes. A good fix is
+ * a satellite solution (see gps_fix_is_real()) with GPS_MIN_SATELLITES. Why:
+ * devdocs/lld/10-peripherals-power.md, "Fix validation". */
+#define GPS_GOOD_FIX_COUNT       5
+#define GPS_MIN_SATELLITES       4
 
 /* Acquire windows (Kconfig) and the duty interval (prefs, set at boot). */
 static const uint32_t gps_acquire_timeout_ms   = CONFIG_ZEPHCORE_GPS_FIX_TIMEOUT_SEC * 1000U;
@@ -223,6 +226,14 @@ static void gps_post_fix_locked(const struct gnss_data *data)
 	atomic_or(&pending_gps_actions, GPS_ACTION_FIX);
 }
 
+/* True for a position and time solved from satellites. An estimated fix (GGA
+ * quality 6, dead reckoning) is the module's last position and its own clock,
+ * so it counts as no fix. */
+static bool gps_fix_is_real(enum gnss_fix_status status)
+{
+	return status == GNSS_FIX_STATUS_GNSS_FIX || status == GNSS_FIX_STATUS_DGNSS_FIX;
+}
+
 /* GNSS callback - called when new fix data is available */
 static void gnss_data_cb(const struct device *dev, const struct gnss_data *data)
 {
@@ -244,7 +255,7 @@ static void gnss_data_cb(const struct device *dev, const struct gnss_data *data)
 
 	k_mutex_lock(&gps_mutex, K_FOREVER);
 
-	if (data->info.fix_status >= GNSS_FIX_STATUS_GNSS_FIX) {
+	if (gps_fix_is_real(data->info.fix_status)) {
 		/* Reject (0,0): the parser can publish a valid fix status with lat/lon not
 		 * yet filled (GGA ahead of RMC). It is never a real fix. */
 		if (data->nav_data.latitude == 0 && data->nav_data.longitude == 0) {

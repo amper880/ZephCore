@@ -55,3 +55,26 @@ first, which a long press cannot meet: every long press asked for the confirmati
 
 The confirmation is a second **hold**. A short press pages on instead, which on the Power Off page
 goes back to the first page.
+
+## GPS: a fix could set the clock to an old time
+
+On a repeater with a GPS, a fix could set the clock hours back. The next fix usually put it right
+again, but until then the node's adverts and replies carried the old time, and mesh time sync was not
+allowed to correct it.
+
+Right after waking, a GPS receiver can report an estimated position for a few seconds: its last
+position and its own clock, before any satellite has confirmed them. These were accepted as a fix.
+If the receiver's clock had not kept time while it slept, that old time was written to the node.
+
+- **Only positions solved from satellites count as a fix**, and five in a row are needed (was three).
+  A fix takes about two seconds longer.
+- This applies to every board with a GPS.
+
+It was reported on a SenseCAP Solar P1 with `set gps standby` raised to 48 hours, which keeps the
+receiver powered while it sleeps. With the default (one hour) a repeater switches the receiver off
+between its 48-hour fixes.
+
+Good to know: a telemetry request from a logged-in client (anything above guest) wakes a repeater's
+GPS for a fresh fix, so the GPS can run more often than the `gps duty` interval.
+
+Thanks to **Innocent Killer 101** for the report and the measurements.

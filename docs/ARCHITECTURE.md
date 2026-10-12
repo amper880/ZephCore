@@ -802,7 +802,9 @@ Loading also range-checks `freq`/`sf`/`bw` and falls back to the compile-time de
 ### 7.3 GPS (`adapters/gps/`)
 
 - State machine: OFF → ACQUIRING → STANDBY (with warm standby on supported hardware)
-- 3 consecutive good fixes (≥4 satellites) required before reporting
+- 5 consecutive good fixes required before reporting. A good fix is a satellite solution (GGA quality
+  GNSS or DGNSS) with ≥4 satellites; an estimated fix (quality 6, dead reckoning) counts as no fix,
+  because its time is the module's own clock and its position the last one
 - Multi-constellation: GPS+GLONASS+Galileo+BeiDou with fallback
 - T1000-E / MeshTracker X1 (AG3335): multi-GPIO power sequencing; standby is the module's RTC backup sleep
   (`$PAIR650,0` before `GPS_EN` is cut, VRTC kept, a `GPS_RTC_INT` pulse wakes it)
@@ -820,8 +822,8 @@ Loading also range-checks `freq`/`sf`/`bw` and falls back to the compile-time de
 
 `gps_wake_interval_ms` (initialised from `prefs.gps_interval`) controls the mode:
 
-- **Duty cycling** (`gps_wake_interval_ms > 0`): after acquiring 3 good fixes the GPS powers down; the state machine wakes it again after the configured standby interval. The fix callback fires and then the GPS sleeps.
-- **Always-on** (`gps_wake_interval_ms == 0`): the GPS never powers down. `consecutive_good_fixes` is reset after each promotion so the 3-fix gate cycles continuously, streaming fresh positions. Flash writes and fix callbacks are rate-limited to once per `gps_acquire_timeout_ms` to avoid hammering storage.
+- **Duty cycling** (`gps_wake_interval_ms > 0`): after acquiring 5 good fixes the GPS powers down; the state machine wakes it again after the configured standby interval. The fix callback fires and then the GPS sleeps.
+- **Always-on** (`gps_wake_interval_ms == 0`): the GPS never powers down. `consecutive_good_fixes` is reset after each promotion so the 5-fix gate cycles continuously, streaming fresh positions. Flash writes and fix callbacks are rate-limited to once per `gps_acquire_timeout_ms` to avoid hammering storage.
 
 `gps_set_poll_interval_sec(0)` switches to always-on live; persisted via `prefs.gps_interval` (set by `set gps duty 0`).
 

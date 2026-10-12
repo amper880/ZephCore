@@ -57,7 +57,7 @@ void gps_format_diagnostics(char *out, size_t out_size);
 typedef void (*gps_enable_callback_t)(bool enabled);
 void gps_set_enable_callback(gps_enable_callback_t cb);
 
-/* GPS fix callback - called when GPS acquires a validated fix (3 consecutive good fixes)
+/* GPS fix callback - called when GPS acquires a validated fix (5 consecutive satellite fixes)
  * Parameters: latitude (degrees), longitude (degrees), utc_time (Unix timestamp,
  * 0 if the fix carried no usable date). Runs on the main thread, from
  * gps_process_event(), so it may set the clock and prefs directly. */

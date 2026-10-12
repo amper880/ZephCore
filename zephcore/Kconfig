@@ -950,7 +950,7 @@ config ZEPHCORE_GPS_FIX_TIMEOUT_SEC
 	  GPS will be powered off after this timeout.
 	  Default 120s — 30s was too aggressive for Air530Z / MAX-7Q warm
 	  starts in marginal sky conditions; the acquire loop would time out
-	  before the 3-consecutive-good-fix gate could promote. Applies to
+	  before the consecutive-good-fix gate could promote. Applies to
 	  wake cycles where the module kept its state; the first acquisition
 	  and every wake after a full power-off use
 	  ZEPHCORE_GPS_FIRST_FIX_TIMEOUT_SEC.
