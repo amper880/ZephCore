@@ -42,6 +42,7 @@ west build -b <board> zephcore --pristine -- -DEXTRA_CONF_FILE="boards/common/<f
 | `repeater.conf` | Repeater | On ESP32-S3/C-series this pulls in `wifi_ota.conf`, so add `--sysbuild` |
 | `room_server.conf` | Room server | |
 | `observer.conf` | Observer | ESP32 only (WiFi + MQTT) |
+| `kiss_modem.conf` | KISS modem | Raw packets over the USB/console serial port; the console is off |
 | `debug.conf` | Logging and asserts | Combine with any role |
 | `packet_logging.conf` | One RAW/RX/TX line per packet | Logging subsystem stays off, so the console carries only these lines and the CLI |
 | `repeater_uplink.conf` | Repeater WiFi + MQTT uplink | ESP32, with `repeater.conf` |
@@ -71,6 +72,9 @@ west build -b rak4631 zephcore --pristine -- -DEXTRA_CONF_FILE="boards/common/ro
 
 # Observer
 west build -b xiao_esp32c3 zephcore --pristine -- -DEXTRA_CONF_FILE="boards/common/observer.conf"
+
+# KISS modem
+west build -b xiao_esp32c3 zephcore --pristine -- -DEXTRA_CONF_FILE="boards/common/kiss_modem.conf"
 
 # BLE adapter at debug level (debug.conf turns logging on, the flag raises BLE to DBG)
 west build -b rak4631 zephcore --pristine -- -DEXTRA_CONF_FILE="boards/common/debug.conf" -DCONFIG_ZEPHCORE_BLE_LOG_LEVEL_DBG=y

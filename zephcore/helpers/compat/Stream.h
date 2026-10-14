@@ -26,6 +26,7 @@ public:
 		return n;
 	}
 	size_t write(const char *str) { return str ? write((const uint8_t *)str, strlen(str)) : 0; }
+	virtual int availableForWrite() { return 0; }
 
 	size_t print(char c) { return write((uint8_t)c); }
 	size_t print(const char *str) { return write(str); }

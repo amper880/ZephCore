@@ -77,9 +77,11 @@ A **role** is a firmware personality chosen at build time. Exactly one role per 
 | Repeater | Autonomous relay: ACL, regions, neighbours, admin CLI | Operator | `examples/simple_repeater` | `/lfs/repeater/` |
 | Room server | Store-and-forward board, per-client sync cursor | Operator + logged-in clients | `examples/simple_room_server` | `/lfs/repeater/` |
 | Observer | Listen-only; publishes packets to MQTT (ESP32) | Broker | none (ZephCore-only) | `/lfs/repeater/` |
+| KISS modem | Raw packets, radio and identity services for a host | Host program (KISS) | `examples/kiss_modem` | `/lfs/repeater/` (identity) |
 
 Roles share the mesh core; they differ in policy. **Switching between the companion and a server role formats the
-volume** (the identity is lost unless exported first); repeater, room server and observer share one layout.
+volume** (the identity is lost unless exported first); repeater, room server, observer and KISS modem share one
+layout.
 
 ---
 
@@ -106,7 +108,7 @@ flowchart LR
 |---|---|---|
 | Platform | nRF52840, nRF54L15, nRF54LM20A, ESP32 classic, ESP32-S3/C3/C6, EFR32MG24, STM32WL, native Linux | board directory |
 | Radio | SX126x family (default), LR1110, LR2021, SX127x | devicetree / board conf |
-| Role | companion (default), repeater, room server, observer | user `EXTRA_CONF_FILE` |
+| Role | companion (default), repeater, room server, observer, KISS modem | user `EXTRA_CONF_FILE` |
 | UI | none, button UI, joystick/keypad UI (companion) | board Kconfig select |
 | Features | debug, WiFi companion, WiFi OTA, uplink, packet logging, PM | user confs; some auto-added |
 
@@ -129,11 +131,11 @@ The board list is one manifest per board (`zephcore.yml`), read by `build.sh`, t
 
 ```mermaid
 flowchart TB
-    subgraph L5["L5 Composition roots — src/main_companion.cpp, src/server_main_common.cpp, app/main_observer.cpp"]
+    subgraph L5["L5 Composition roots — src/main_companion.cpp, src/server_main_common.cpp, app/main_observer.cpp, src/main_kiss_modem.cpp"]
         MAIN["construct objects, wire callbacks, run the event loop"]
     end
     subgraph L4["L4 Roles and app policy — app/"]
-        ROLES["CompanionMesh · RepeaterMesh · RoomServerMesh · ObserverMesh · PowerPolicy"]
+        ROLES["CompanionMesh · RepeaterMesh · RoomServerMesh · ObserverMesh · KissModem · PowerPolicy"]
     end
     subgraph UI["Presentation — helpers/ui*"]
         UIX["display, button UI, joystick UI, buzzer, LEDs"]

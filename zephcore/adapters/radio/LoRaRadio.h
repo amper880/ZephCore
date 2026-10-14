@@ -81,6 +81,8 @@ public:
 
 	/* Extended API */
 	bool isChannelActive(int threshold = 0);
+	/* Instantaneous RSSI in dBm (-80 where the family cannot read it). */
+	int16_t getCurrentRSSI() { return hwGetCurrentRSSI(); }
 
 	/* Power saving */
 	void enableRxDutyCycle(bool enable);
