@@ -674,20 +674,21 @@ uint32_t RepeaterMesh::getDirectRetransmitDelay(const mesh::Packet* packet) {
   return computeAdaptiveDirectDelay(packet);
 }
 
-// ZEPHCORE: ours. Also records whether the packet was an unscoped flood.
+// ZEPHCORE: ours. Also records whether the packet was an unscoped flood; a
+// transport flood with code 0 is one, wildcard deny included (UPSTREAM_TRACKER 01f9293b).
 mesh::DispatcherAction RepeaterMesh::onRecvPacket(mesh::Packet* pkt) {
   // Determine the request packet's region so sendFloodReply() can echo the same
   // scope. Runs for every packet (not just floods) so recv_pkt_region is cleared
   // for direct packets instead of inheriting the last flood's region.
-  recv_pkt_unscoped_flood = (pkt->getRouteType() == ROUTE_TYPE_FLOOD);
-  if (pkt->getRouteType() == ROUTE_TYPE_TRANSPORT_FLOOD) {
-    recv_pkt_region = region_map.findMatch(pkt, REGION_DENY_FLOOD);
-  } else if (pkt->getRouteType() == ROUTE_TYPE_FLOOD) {
+  recv_pkt_unscoped_flood = mesh::isUnscopedFlood(pkt);
+  if (recv_pkt_unscoped_flood) {
     if (region_map.getWildcard().flags & REGION_DENY_FLOOD) {
       recv_pkt_region = nullptr;
     } else {
       recv_pkt_region = &region_map.getWildcard();
     }
+  } else if (pkt->getRouteType() == ROUTE_TYPE_TRANSPORT_FLOOD) {
+    recv_pkt_region = region_map.findMatch(pkt, REGION_DENY_FLOOD);
   } else {
     recv_pkt_region = nullptr;
   }

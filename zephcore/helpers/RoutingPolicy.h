@@ -15,11 +15,21 @@
 namespace mesh {
 
 /**
+ * An un-scoped flood: ROUTE_TYPE_FLOOD, or a transport flood whose first code
+ * is 0 (no Region computes 0; upstream 01f9293b treats it as un-scoped).
+ */
+inline bool isUnscopedFlood(const Packet *packet)
+{
+	return packet->getRouteType() == ROUTE_TYPE_FLOOD
+	       || (packet->getRouteType() == ROUTE_TYPE_TRANSPORT_FLOOD && packet->transport_codes[0] == 0);
+}
+
+/**
  * Test a flood packet against the configured hop limits.
  *
  * @param packet              inbound flood packet (caller has already checked isRouteFlood())
  * @param flood_max           hop ceiling for any flood packet
- * @param flood_max_unscoped  hop ceiling for un-scoped (ROUTE_TYPE_FLOOD) packets;
+ * @param flood_max_unscoped  hop ceiling for un-scoped packets (isUnscopedFlood());
  *                            may be clamped lower than scoped/transport floods
  * @param flood_max_advert    hop ceiling for ADVERT floods, typically tighter still
  *                            so advert churn stays local
@@ -31,7 +41,7 @@ inline bool isFloodHopLimitExceeded(const Packet *packet, uint8_t flood_max,
 	uint8_t hops = packet->getPathHashCount();
 
 	if (hops >= flood_max) return true;
-	if (packet->getRouteType() == ROUTE_TYPE_FLOOD && hops >= flood_max_unscoped) return true;
+	if (isUnscopedFlood(packet) && hops >= flood_max_unscoped) return true;
 	if (packet->getPayloadType() == PAYLOAD_TYPE_ADVERT && hops >= flood_max_advert) return true;
 	return false;
 }

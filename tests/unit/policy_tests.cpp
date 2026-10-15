@@ -18,6 +18,7 @@ TEST(reply_routes, "UNIT-POLICY-001", "Reply routing and scope truth tables") {
 }
 TEST(hop_limits, "UNIT-POLICY-002", "Scoped unscoped and advert hop boundaries") {
     Packet p;
+    p.transport_codes[0] = 0x1234; p.transport_codes[1] = 0;
     for (uint8_t route : {ROUTE_TYPE_FLOOD, ROUTE_TYPE_TRANSPORT_FLOOD}) {
         for (uint8_t type : {PAYLOAD_TYPE_ADVERT, PAYLOAD_TYPE_TXT_MSG}) {
             p.header = route | (type << 2);
@@ -30,6 +31,25 @@ TEST(hop_limits, "UNIT-POLICY-002", "Scoped unscoped and advert hop boundaries")
     }
     p.header = ROUTE_TYPE_FLOOD; p.path_len = 0;
     CHECK(isFloodHopLimitExceeded(&p, 5, 0, 2));
+}
+TEST(code_zero_unscoped, "UNIT-POLICY-003", "Transport flood with code 0 is un-scoped, other codes and routes are not") {
+    Packet p;
+    p.transport_codes[1] = 0x5678;
+    for (uint16_t code : {0x0000, 0x0001, 0xFFFE}) {
+        p.transport_codes[0] = code;
+        p.header = ROUTE_TYPE_TRANSPORT_FLOOD | (PAYLOAD_TYPE_TXT_MSG << 2);
+        CHECK(isUnscopedFlood(&p) == (code == 0));
+        p.setPathHashSizeAndCount(1, 3);
+        CHECK(isFloodHopLimitExceeded(&p, 5, 3, 2) == (code == 0));
+        p.setPathHashSizeAndCount(1, 0);
+        CHECK(isFloodHopLimitExceeded(&p, 5, 0, 2) == (code == 0));
+        p.header = ROUTE_TYPE_TRANSPORT_DIRECT | (PAYLOAD_TYPE_TXT_MSG << 2);
+        CHECK(!isUnscopedFlood(&p));
+        p.header = ROUTE_TYPE_FLOOD | (PAYLOAD_TYPE_TXT_MSG << 2);
+        CHECK(isUnscopedFlood(&p));
+        p.header = ROUTE_TYPE_DIRECT | (PAYLOAD_TYPE_TXT_MSG << 2);
+        CHECK(!isUnscopedFlood(&p));
+    }
 }
 TEST(rate_window, "UNIT-RATE-001", "Rate window threshold expiry and reset") {
     RateLimiter limiter(2, 10);

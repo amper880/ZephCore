@@ -46,4 +46,4 @@ On a 2.4 GHz preset there is no off-grid frequency, and the display and the CLI 
 
 Up to 1.17.7 the display toggle turned forwarding on without changing the frequency, so a companion
 could end up repeating on the live mesh. A node left in that state stops forwarding when it boots
-1.17.8 or later, and shows off-grid mode as off.
+1.18.0 or later, and shows off-grid mode as off.

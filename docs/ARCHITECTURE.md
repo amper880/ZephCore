@@ -233,7 +233,7 @@ Path_len byte:
 
 **Flood routing**: Packet has no destination path. Each relay node appends its identity hash to `path[]` and retransmits. Priority decreases with hop count. `allowPacketForward()` is the gatekeeper.
 
-**Direct routing**: Packet carries a source-routed `path[]`. Each relay node checks if the first path hash matches its own identity, removes itself, and forwards. Path is built from previous flood packets' accumulated hashes.
+**Direct routing**: Packet carries a source-routed `path[]`. Each relay node checks if the first path hash matches its own identity, removes itself, and forwards. Path is built from previous flood packets' accumulated hashes. Every forwarded direct packet, ACKs included (upstream 1.18.0), waits `getDirectRetransmitDelay()`; extra multi-ACKs and the final ACK are 300 ms apart.
 
 **Deduplication**: `SimpleMeshTables` maintains a circular buffer of 160 packet hashes (8 bytes each, SHA-256 truncated); ACKs are deduped through the same packet-hash path. `wasSeen()` is a pure query; call sites insert explicitly via `markSeen()` to prevent duplicate processing and retransmission.
 
@@ -727,7 +727,7 @@ default) is migrated to 3200 once (`zc.aoff_set`).
 Autonomous operation features:
 - **Authentication**: Password-based login with timestamp replay protection (120s window)
 - **Permission levels**: GUEST(0), READ_ONLY(1), READ_WRITE(2), ADMIN(3)
-- **Region filtering**: `RegionMap` with transport key matching per flood packet
+- **Region filtering**: `RegionMap` with transport key matching per flood packet. Un-scoped floods (`mesh::isUnscopedFlood()`: plain floods, and transport floods with code 0 as upstream 1.18.0) go to the wildcard `*`, whose deny-flood flag and `flood.max.unscoped` apply to both; upstream exempts the code-0 case from both (LLD 02 section 16)
 - **Rate limiting**: 4 requests per 120s (discovery), 4 per 180s (anonymous), 4 failed logins per 180s
 - **Node discovery**: answers discovery requests only while forwarding is on. With `advert.interval` and `flood.advert.interval` both `0` the node is hidden and does not answer, as upstream (`isHiddenNode()`); the request still counts against the discovery rate limit
 - **Neighbor tracking**: RSSI/SNR/name/timestamp table (`CONFIG_ZEPHCORE_MAX_NEIGHBOURS`, default 50 slots)

@@ -102,6 +102,7 @@ Every clock set (these commands, GPS, the app, mesh time sync, SNTP) is also wri
 | Command | Description |
 |---------|-------------|
 | `room.post <message>` | Post a message to the shared room as the server itself (system post). Pushed to clients like any other post. |
+| `set repeat on` | Replies `ERR - repeat now deprecated`, as upstream (1.18.0): a room server never forwards other nodes' packets. `set repeat off` and `get repeat` are the common commands |
 
 ---
 
@@ -124,6 +125,8 @@ Regions control which flood packets the repeater forwards. The region tree is hi
 | `region denyf <name>` | Deny flood packets in a region (sets deny-flood flag) |
 | `region list allowed` | List all regions that allow floods |
 | `region list denied` | List all regions that deny floods |
+
+**Un-scoped floods:** plain floods, and transport floods whose first code is `0` (no region computes `0`; as upstream 1.18.0). The wildcard `*` decides them: `region denyf *` stops forwarding them, and `flood.max.unscoped` limits their hops. Upstream applies neither to the code-`0` case; ZephCore applies both. A reply to such a request is sent un-scoped.
 
 **Region load format:** one region per line, indented with spaces to indicate depth. Append `F` after the name to mark flood-allowed (otherwise flood is denied by default).
 
@@ -434,7 +437,7 @@ four radio parameters together, since they are one interop-critical set.
 | `set direct.txdelay <value>` | | Accepted for prefs compatibility — **ignored** (direct.txdelay is adaptive) |
 | `set backoff.multiplier <m>` | 0.0–2.0 | *(ZephCore only)* Per-dupe reactive backoff multiplier (0 = disable reactive backoff) |
 | `set flood.max <count>` | 0–64 | Maximum flood retransmit hops |
-| `set flood.max.unscoped <count>` | 0–64 | Hop limit for un-scoped floods only (default 64 = same as flood.max); scoped/transport floods still use flood.max |
+| `set flood.max.unscoped <count>` | 0–64 | Hop limit for un-scoped floods only, including transport floods with code `0` (default 64 = same as flood.max); scoped/transport floods still use flood.max |
 | `set flood.max.advert <count>` | 0–64 | Hop limit for ADVERT floods only (default 8); curbs advert churn independent of flood.max |
 | `set flood.advert.interval <hours>` | `0` (off) or 3–168 | How often the repeater floods its own advertisement. `0` disables periodic flood adverts. With `advert.interval` also `0` the repeater is hidden: it stops answering node discovery requests (`discover.neighbors`, the app's discover) as well. |
 | `set advert.interval <mins>` | `0` (off) or min–240 | How often the repeater sends local (zero-hop) advertisements. `0` — the default — disables them. Stored halved (the pref holds minutes/2), so odd values round down. |
