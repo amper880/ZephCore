@@ -1,7 +1,7 @@
 # ZephCore 1.18.0-zephcore
 
-Safer off-grid mode, working buttons on four boards with a display, a GPS clock fix, and the
-changes from upstream MeshCore 1.18.0.
+Safer off-grid mode, working buttons on four boards with a display, a GPS clock fix, a new KISS
+modem role, and the changes from upstream MeshCore 1.18.0.
 
 > [!NOTE]
 > A normal upgrade keeps your identity, settings, contacts and phone pairing.
@@ -38,6 +38,25 @@ before any satellite confirms them. That was taken as a fix and could set a repe
 back. Now only satellite-solved positions count, five in a row. A fix takes about two seconds longer.
 This applies to every board with a GPS. Thanks to **Innocent Killer 101** for the report and the
 measurements.
+
+## New: KISS modem role
+
+A ZephCore node can now act as a plain LoRa modem for a program on a computer, as upstream
+MeshCore's `kiss_modem` does. The program sends and receives raw packets over USB, sets the
+radio, and uses the node's key to sign, verify, encrypt and decrypt. There is no mesh, no
+Bluetooth and no CLI on the node in this role.
+
+- It speaks upstream's protocol ([kiss_modem_protocol.md](../docs/kiss_modem_protocol.md)), so
+  host software written for upstream's modem works with it.
+- When the channel is busy, a packet waits for it to clear instead of failing at once.
+- Radio settings outside the ranges ZephCore supports are refused.
+- The modem can also talk on a UART of your choice, for example header pins wired to a Raspberry
+  Pi, named `zephcore,kiss-uart` in the devicetree; USB then stays free for updates.
+- No prebuilt image yet: build it with `boards/common/kiss_modem.conf`
+  ([BUILDING.md](../docs/BUILDING.md)). It keeps the identity of a repeater, room server or
+  observer on the same node; flashed over a companion, it erases the companion's data.
+
+Thanks to **recrof** for the port.
 
 ## From upstream MeshCore 1.18.0
 

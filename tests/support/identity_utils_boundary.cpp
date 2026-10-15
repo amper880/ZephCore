@@ -39,3 +39,14 @@ void mesh::Utils::secureZeroize(void*, size_t) {
 bool mesh::Utils::constantTimeEqual(const void*, const void*, size_t) {
     throw std::runtime_error("Identity validation requires real Utils integration");
 }
+// KissModem's hash and encrypt/decrypt commands (not exercised by its tests;
+// the one-fragment sha256 is hash_capture.cpp's).
+void mesh::Utils::sha256(uint8_t*, size_t, const uint8_t*, int, const uint8_t*, int) {
+    throw std::runtime_error("KISS hash command requires real Utils integration");
+}
+int mesh::Utils::encryptThenMAC(const uint8_t*, uint8_t*, const uint8_t*, int) {
+    throw std::runtime_error("KISS encrypt command requires real Utils integration");
+}
+int mesh::Utils::MACThenDecrypt(const uint8_t*, uint8_t*, const uint8_t*, int) {
+    throw std::runtime_error("KISS decrypt command requires real Utils integration");
+}

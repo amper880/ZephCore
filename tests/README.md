@@ -7,7 +7,7 @@ python tests/run.py run --profile quick
 ```
 
 This first implementation builds **actual production C++ sources** and executes
-the named native cases listed in `catalog.json` (114 on 2026-09-25) plus the Python
+the named native cases listed in `catalog.json` (113 on 2026-10-15) plus the Python
 harness self-tests. No boards, Zephyr workspace,
 west, network access or third-party Python packages are required. This is the first
 subset of the [regression plan](../docs/REGRESSION_TEST_PLAN.md), not completion of
@@ -73,6 +73,7 @@ and rejects missing, unexpected, renamed or duplicate cases.
 | `include/mesh/Maintenance.h` | Due/past/future deadlines, wraparound and idle composition |
 | `src/Dispatcher.cpp` | Immediate wakes, scheduled TX, completion/timeout ownership, priority-preserving refusal, LBT starvation across retry gaps, final RX gate, busy recovery, budget refill/admin exception, RX draining/hold/retransmit, maintenance, truncated headers, stats reset, clock wrap and 4,096 generated parser inputs |
 | `src/Identity.cpp` and bundled Monocypher | Two RFC8032 Ed25519 known-answer vectors, tampered signatures/messages, wrong signer, canonical/legacy/private-only storage, failed-read state preservation and bidirectional ECDH |
+| `app/KissModem.cpp` | KISS escaping both ways and oversized-frame recovery, LBT refusal back to CSMA until the wait-clear bound, TX timeout only after the radio concludes, SetRadio range refusal, `msUntilNextTx()` per state |
 
 The catalog maps stable case IDs to their test source files. Production paths above
 are relative to `zephcore/`. Generated-case seeds are fixed and documented in the

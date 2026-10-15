@@ -152,6 +152,7 @@ Only `lora0` is required. Everything else enables its feature by being present.
 | `sensors-i2c.dtsi`, `rtc-i2c.dtsi` | I2C sensors (probed at runtime) and a battery-backed RTC (opt-in) |
 | `nordic,qspi-nor` + `qspi-ext.dtsi` | `/ext` on external flash for contacts, channels and blobs |
 | chosen `zephcore,companion-uart` | Companion protocol on a UART, for boards without Bluetooth |
+| chosen `zephcore,kiss-uart` | KISS modem role on its own UART (for example header pins to an SBC) instead of USB or the console; baud rate from the node's `current-speed` |
 | `zephcore,poweroff-gpios` | Pins released at shutdown on boards with a latched supply rail |
 
 `board.overlay` has a worked example for each row.

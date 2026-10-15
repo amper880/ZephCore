@@ -56,12 +56,18 @@ touch before writing code. Decisions are in `docs/adr/`.
 - Build with `--pristine` when the board or role changes; ESP32 S3/C-series repeaters need `--sysbuild`.
 - Host tests: `python3 tests/run.py run --profile quick` (Linux or WSL). A new case needs a
   `tests/catalog.json` entry. A failing pinned test is a finding: do not edit the pinned values to make it pass.
+- Logic that runs without hardware (a protocol parser, a state machine, a timing rule, a `// ZEPHCORE:` change
+  to upstream behaviour) comes with host tests that pin it.
 - PR CI runs the host tests only. Build every board you touched and one you did not, and run each role you
-  changed. Releases build from `zephcore.yml` alone, so nothing may depend on a hand-passed fragment.
+  changed. Releases build from `zephcore.yml` alone, so nothing may depend on a hand-passed fragment. A role or
+  fragment no `zephcore.yml` row builds goes into the "compile-only roles" step of `.github/workflows/build.yml`.
+- A new role or composition root puts every part the board has into a defined state, used or not: GPS parked,
+  LEDs off, display blanked, as `src/server_main_common.cpp` does.
 - New board: `zephcore.yml` without `release:`, then `python zephcore/scripts/board_manifest.py check` and
   `... docs`.
 - Docs in the same PR: a clause in `docs/ARCHITECTURE.md` when behaviour, an interface or a limit changes;
-  `docs/CLI_commands.md` for any CLI change; an ADR when a decision is taken or reversed.
+  `docs/CLI_commands.md` for any CLI change; an ADR when a decision is taken or reversed; the next release's
+  `releasenotes/RELEASE_NOTES_<version>-zephcore.md` for anything a user sees.
 
 ## PR description
 

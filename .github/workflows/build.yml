@@ -164,6 +164,11 @@ jobs:
     - name: build firmwares
       run: bash build.sh nrf
 
+    # Roles no manifest publishes still have to compile. Built, not packaged:
+    # nothing here reaches firmware/.
+    - name: compile-only roles
+      run: west build -b rak4631 zephcore --pristine -- -DEXTRA_CONF_FILE="boards/common/kiss_modem.conf"
+
     # Hit rate is the entire point of the per-job ccache namespace above, but the
     # action only prints stats at SETUP time — it runs `ccache -z -s -vv`, which
     # reports the restored cache and then zeroes the counters. Without a stats
@@ -371,6 +376,10 @@ jobs:
 
     - name: build firmwares
       run: bash build.sh esp32 companions
+
+    # Roles no manifest publishes still have to compile (see build-nrf).
+    - name: compile-only roles
+      run: west build -b xiao_esp32c3 zephcore --pristine -- -DEXTRA_CONF_FILE="boards/common/kiss_modem.conf"
 
     - name: ccache stats
       if: always()

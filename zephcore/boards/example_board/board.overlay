@@ -84,6 +84,9 @@
  *     zephcore,gps-power         regulator that powers the GPS (section 6)
  *     zephcore,companion-uart    companion protocol on a plain UART, for
  *                                boards without Bluetooth (lora_e5_mini)
+ *     zephcore,kiss-uart         KISS modem role on its own UART (header pins
+ *                                to a host SBC); the baud rate is the node's
+ *                                current-speed
  * ================================================================== */
 / {
 	aliases {

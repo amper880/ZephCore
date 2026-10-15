@@ -749,9 +749,12 @@ Listen-only node (ESP32 only): receives LoRa packets and publishes them to an MQ
 Upstream's `examples/kiss_modem` (protocol: [kiss_modem_protocol.md](kiss_modem_protocol.md)). `app/KissModem.cpp/h`
 keep upstream's text, with ZephCore changes fenced; `src/main_kiss_modem.cpp` is the composition root. No `Mesh`
 or `Dispatcher`: the modem drives `LoRaRadio` directly, and the main loop runs the radio's maintenance (noise floor,
-CAD, AGC/drift) as the Dispatcher would. The host serial is the CDC-ACM port, else the console UART, through
-`adapters/transport/ZephyrUartStream` (an Arduino `Stream` over interrupt-driven RX/TX rings); the console driver
-is off in this role so nothing else writes to the port. Event-driven: serial input, LoRa RX and TX-done, host
+CAD, AGC/drift) as the Dispatcher would. The host serial is the chosen `zephcore,kiss-uart` node (upstream's
+`KISS_UART_RX/TX`: header pins to an SBC, baud rate from its `current-speed`), else the CDC-ACM port, else the
+console UART, through `adapters/transport/ZephyrUartStream` (an Arduino `Stream` over interrupt-driven RX/TX rings).
+USB is brought up in every case, so the CDC port keeps the 1200-baud DFU touch. The console driver is off in this
+role so nothing else writes to the port; with a `zephcore,kiss-uart` other than the console it may be turned back
+on, and a build assert rejects a console on the KISS port. Event-driven: serial input, LoRa RX and TX-done, host
 output drained, and a one-shot for the sooner of `KissModem::msUntilNextTx()` and the radio's maintenance
 deadline. Differences from upstream:
 - An LBT refusal from `startSendRaw()` returns to the CSMA slot wait until the wait-clear bound (1.5 × the
@@ -760,7 +763,10 @@ deadline. Differences from upstream:
 - `SetRadio` outside the `ZC_RADIO_*` ranges (NodePrefs.h) is refused with `HW_ERR_INVALID_PARAM`.
 - No periodic AGC reset: the radio's own deaf-aware maintenance replaces it, as in every role.
 Radio settings live in RAM only (upstream: the same); the identity is `/lfs/repeater/_main.id`, shared with the
-server roles. Build with `boards/common/kiss_modem.conf`.
+server roles. No UI: at boot the LEDs are driven off and a display is blanked (`mc_display_off()`, or
+`oled_sleep()` without the display UI), as a server leaves them after its auto-off. Host tests: `UNIT-KISS-*`
+(`tests/unit/kiss_modem_tests.cpp`). Not released from `zephcore.yml`; the release workflow compiles it for rak4631
+and xiao_esp32c3. Build with `boards/common/kiss_modem.conf`.
 
 ### 6.6 CommonCLI Commands
 

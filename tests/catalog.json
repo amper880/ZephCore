@@ -541,6 +541,31 @@
       "id": "UNIT-UTF8-001",
       "name": "Complete codepoints only and invalid UTF-8 rejection",
       "source": "tests/unit/advert_tests.cpp"
+    },
+    {
+      "id": "UNIT-KISS-001",
+      "name": "Host frames are unescaped to the radio and received packets are escaped with RX metadata",
+      "source": "tests/unit/kiss_modem_tests.cpp"
+    },
+    {
+      "id": "UNIT-KISS-002",
+      "name": "An LBT refusal returns to CSMA and fails only at the wait-clear bound",
+      "source": "tests/unit/kiss_modem_tests.cpp"
+    },
+    {
+      "id": "UNIT-KISS-003",
+      "name": "A transmit times out only once the radio has concluded it",
+      "source": "tests/unit/kiss_modem_tests.cpp"
+    },
+    {
+      "id": "UNIT-KISS-004",
+      "name": "SetRadio outside the ZephCore preset ranges is refused",
+      "source": "tests/unit/kiss_modem_tests.cpp"
+    },
+    {
+      "id": "UNIT-KISS-005",
+      "name": "msUntilNextTx reports each timed state and nothing while idle",
+      "source": "tests/unit/kiss_modem_tests.cpp"
     }
   ]
 }
