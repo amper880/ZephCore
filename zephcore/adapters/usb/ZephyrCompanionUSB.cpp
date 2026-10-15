@@ -503,6 +503,11 @@ bool zephcore_usb_companion_is_text_session(void)
 	return usb_session_is_text;
 }
 
+bool zephcore_usb_companion_link_up(void)
+{
+	return usb_link_up;
+}
+
 void zephcore_usb_companion_set_cli_line_cb(void (*cb)(const char *line))
 {
 	s_cli_line_cb = cb;

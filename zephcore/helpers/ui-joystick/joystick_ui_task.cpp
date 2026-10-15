@@ -512,7 +512,7 @@ JoystickUITask::JoystickUITask()
 	  _next_refresh(0), _last_blt_ms(0), _pending_render(false), _render_immediate(false),
 	  _screen_off_ms(AUTO_OFF_MILLIS), _was_display_on(false),
 	  _cached_batt_mv(0), _battery_display_mode(0),
-	  _brightness(100), _wake_on_msg(true), _ble_connected(false),
+	  _brightness(100), _wake_on_msg(true), _app_connected(false),
 	  _ble_enabled(true), _noise_floor(-120),
 	  _pkt_recv(0), _pkt_sent(0), _pkt_errors(0), _alert_expiry(0),
 	  _locked(false), _lock_step(0),
@@ -596,6 +596,9 @@ void JoystickUITask::begin(BaseChatMesh *mesh, mesh::ZephyrRTCClock *rtc, NodePr
 	_rename_node = new RenameNodeScreen(this);
 	_ble_code = new BLECodeScreen(this);
 	_stats = new StatsScreen(this);
+#ifdef CONFIG_ZEPHCORE_COMPANION_WIFI
+	_wifi = new WifiScreen(this);
+#endif
 	_stopwatch = new StopwatchScreen(this);
 	_countdown = new CountdownScreen(this);
 	_snake = new SnakeScreen(this);
@@ -646,6 +649,17 @@ void JoystickUITask::gotoT9InputScreenWithPrefix(const char *prefix)
 void JoystickUITask::gotoRenameNodeScreen()   { setCurrScreen(_rename_node); }
 void JoystickUITask::gotoBLECodeScreen()      { setCurrScreen(_ble_code); }
 void JoystickUITask::gotoStatsScreen()        { setCurrScreen(_stats); }
+#ifdef CONFIG_ZEPHCORE_COMPANION_WIFI
+void JoystickUITask::gotoWifiScreen()         { setCurrScreen(_wifi); }
+
+void JoystickUITask::setWifi(uint8_t state, const char *ssid, const char *ip, uint16_t port)
+{
+	_wifi_state = state;
+	_wifi_port = port;
+	snprintf(_wifi_ssid, sizeof(_wifi_ssid), "%s", ssid ? ssid : "");
+	snprintf(_wifi_ip, sizeof(_wifi_ip), "%s", ip ? ip : "");
+}
+#endif
 void JoystickUITask::gotoStopwatchScreen()    { setCurrScreen(_stopwatch); }
 void JoystickUITask::gotoCountdownScreen()    { setCurrScreen(_countdown); }
 void JoystickUITask::gotoSnakeScreen()        { setCurrScreen(_snake); }
@@ -1165,19 +1179,19 @@ void JoystickUITask::newMsg(uint8_t path_len, const char *from_name, const char 
 {
 	(void)msgcount;  /* tracked by CompanionMesh */
 	if (_unread) {
-		/* When BLE phone is connected it pulls offline queue and marks read;
-		 * keep the message in our local history but don't count as unread. */
+		/* A connected app (any transport) pulls the offline queue and marks it
+		 * read; keep the message in our local history but don't count as unread. */
 		_unread->addPreview(path_len, from_name, text,
-				/*initially_read=*/_ble_connected);
+				/*initially_read=*/_app_connected);
 	}
-	/* Wake display if wake on msg is enabled and no BLE peer is connected.
+	/* Wake display if wake on msg is enabled and no app is connected.
 	 * mc_display_on() already reschedules display.c's auto-off timer. */
-	if (_wake_on_msg && !_ble_connected && !_display.isOn()) {
+	if (_wake_on_msg && !_app_connected && !_display.isOn()) {
 		_display.turnOn();
 	}
 	_next_refresh = 0;
 #ifdef CONFIG_ZEPHCORE_UI_BUZZER
-	if (!_ble_connected) {
+	if (!_app_connected) {
 		buzzer_play("MsgRcv3:d=4,o=6,b=200:32e,32g,32b,16c7");
 	}
 #endif
@@ -1201,16 +1215,16 @@ void JoystickUITask::newChannelMsg(const char *channel_name, const char *text,
 	if (_unread) {
 		char ch_from[48];
 		snprintf(ch_from, sizeof(ch_from), "#%s", channel_name ? channel_name : "?");
-		/* BLE-connected → phone reads via offline queue, don't count as unread. */
+		/* App connected → it reads via the offline queue, don't count as unread. */
 		_unread->addPreview(path_len, ch_from, text,
-				/*initially_read=*/_ble_connected);
+				/*initially_read=*/_app_connected);
 	}
-	if (_wake_on_msg && !_ble_connected && !_display.isOn()) {
+	if (_wake_on_msg && !_app_connected && !_display.isOn()) {
 		_display.turnOn();  /* display.c reschedules auto-off internally */
 	}
 	_next_refresh = 0;
 #ifdef CONFIG_ZEPHCORE_UI_BUZZER
-	if (!_ble_connected) {
+	if (!_app_connected) {
 		buzzer_play("kerplop:d=16,o=6,b=120:32g#,32c#");
 	}
 #endif

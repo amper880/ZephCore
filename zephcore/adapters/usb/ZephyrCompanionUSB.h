@@ -74,6 +74,12 @@ void zephcore_usb_companion_write_text(const char *text, size_t len);
  */
 bool zephcore_usb_companion_is_text_session(void);
 
+/**
+ * True while a session of either kind (binary app or text CLI) is open and
+ * the bus is not suspended: the state behind the link callbacks' edges.
+ */
+bool zephcore_usb_companion_link_up(void);
+
 #ifdef __cplusplus
 }
 #endif

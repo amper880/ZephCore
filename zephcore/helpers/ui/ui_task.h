@@ -26,8 +26,20 @@ enum ui_event {
 	UI_EVENT_CHANNEL_MSG,    /* New channel message received */
 	UI_EVENT_ROOM_MSG,       /* New room message received */
 	UI_EVENT_ACK,            /* ACK received */
-	UI_EVENT_BLE_CONNECTED,  /* BLE peer connected */
-	UI_EVENT_BLE_DISCONNECTED, /* BLE peer disconnected */
+	UI_EVENT_APP_CONNECTED,  /* an app connected, on any transport */
+	UI_EVENT_APP_DISCONNECTED, /* the last app session ended */
+};
+
+/* Companion transports with a client connected (ui_set_link_transports). */
+#define UI_LINK_BLE  (1u << 0)
+#define UI_LINK_USB  (1u << 1)  /* wired serial: a binary app or a text-CLI session */
+#define UI_LINK_TCP  (1u << 2)  /* the WiFi companion's app socket */
+
+/* WiFi companion station state (ui_set_wifi). */
+enum ui_wifi_state {
+	UI_WIFI_OFF = 0,  /* wifi.enabled 0, or no network set */
+	UI_WIFI_JOINING,  /* joining, or waiting for a DHCP lease */
+	UI_WIFI_UP,       /* associated with an IPv4 address */
 };
 
 /**
@@ -162,6 +174,22 @@ void ui_set_gps_state(uint8_t state, uint32_t last_fix_age_s, uint32_t next_sear
  * Set BLE enabled state (for display page).
  */
 void ui_set_ble_enabled(bool enabled);
+
+/**
+ * Which companion transports have a client connected (UI_LINK_* bits).
+ * Pushed on every link edge; the app-connected state itself comes from
+ * UI_EVENT_APP_CONNECTED / _DISCONNECTED.
+ */
+void ui_set_link_transports(uint8_t mask);
+
+/**
+ * WiFi companion state for the WiFi page. ssid and ip are copied; either may
+ * be NULL or empty. Repaints only when something changed.
+ *
+ * @param state  enum ui_wifi_state
+ * @param port   TCP port the app connects to
+ */
+void ui_set_wifi(uint8_t state, const char *ssid, const char *ip, uint16_t port);
 
 /**
  * Set notification mode (for display page).

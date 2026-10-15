@@ -14,6 +14,7 @@
 #include <helpers/TxtDataHelpers.h>
 #include <ZephyrWiFiStation.h>
 #include <helpers/pm_sleep_guard.h>
+#include "ui_task.h"
 
 LOG_MODULE_REGISTER(zephcore_wifi_companion, CONFIG_ZEPHCORE_MAIN_LOG_LEVEL);
 
@@ -47,6 +48,19 @@ void companion_wifi_start(const NodePrefs &prefs)
 	if (ZC_PM_LIGHT_SLEEP) {
 		zc_wifi_station_session_up(true);
 	}
+}
+
+/* Off when start() did not join (s_ssid stays empty); up once there is a
+ * lease, which is what the app needs to connect. */
+void companion_wifi_ui_refresh(void)
+{
+	char ip[16] = "";
+	uint8_t state = UI_WIFI_OFF;
+
+	if (s_ssid[0] != '\0') {
+		state = zc_wifi_station_ip(ip, sizeof(ip)) ? UI_WIFI_UP : UI_WIFI_JOINING;
+	}
+	ui_set_wifi(state, s_ssid, ip, CONFIG_ZEPHCORE_TCP_PORT);
 }
 
 bool companion_wifi_cli(const char *command, NodePrefs &prefs, void (*save)(void), char *reply)

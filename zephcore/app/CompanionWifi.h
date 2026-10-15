@@ -13,6 +13,10 @@
  * wifi.* change applies on the next reboot. */
 void companion_wifi_start(const NodePrefs &prefs);
 
+/* Push the station's state, SSID and IP to the display (ui_set_wifi). From
+ * the main loop's housekeeping tick. */
+void companion_wifi_ui_refresh(void);
+
 /* Upstream's companion wifi.* commands. True when `command` was one of them
  * (reply filled); save persists the prefs. */
 bool companion_wifi_cli(const char *command, NodePrefs &prefs, void (*save)(void), char *reply);

@@ -284,16 +284,41 @@ static void companion_session_cleanup(void)
 #endif
 }
 
+/* Which transports have a client right now, for the display (UI_LINK_*). */
+static uint8_t link_transports(void)
+{
+	uint8_t mask = 0;
+
+#if IS_ENABLED(CONFIG_BT)
+	if (zephcore_ble_is_connected()) {
+		mask |= UI_LINK_BLE;
+	}
+#endif
+#if ZEPHCORE_USB_STACK
+	if (zephcore_usb_companion_link_up()) {
+		mask |= UI_LINK_USB;
+	}
+#endif
+#if IS_ENABLED(CONFIG_ZEPHCORE_TRANSPORT_TCP)
+	if (tcp_companion_is_connected()) {
+		mask |= UI_LINK_TCP;
+	}
+#endif
+	return mask;
+}
+
 /* MESH_EVENT_LINK: a transport (USB and TCP sessions included) connected or
- * disconnected. */
+ * disconnected. The app-connected events stay transport-agnostic (they gate
+ * buzzer, LED and unread handling); the mask says which transport it is. */
 static void process_link_change(void)
 {
+	ui_set_link_transports(link_transports());
 	if (atomic_set(&link_ups, 0) > 0) {
-		ui_notify(UI_EVENT_BLE_CONNECTED);
+		ui_notify(UI_EVENT_APP_CONNECTED);
 	}
 	if (atomic_set(&link_downs, 0) > 0 && !companion_serial.isConnected()) {
 		companion_session_cleanup();
-		ui_notify(UI_EVENT_BLE_DISCONNECTED);
+		ui_notify(UI_EVENT_APP_DISCONNECTED);
 	}
 }
 
@@ -461,6 +486,9 @@ static void mesh_event_loop(void)
 #endif
 
 			mesh_housekeeping_ui_refresh();
+#if IS_ENABLED(CONFIG_ZEPHCORE_COMPANION_WIFI) && defined(ZEPHCORE_LORA)
+			companion_wifi_ui_refresh();
+#endif
 
 			if (companion_mesh_ptr) {
 				companion_mesh_ptr->timeSyncTick();

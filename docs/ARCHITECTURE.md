@@ -975,7 +975,9 @@ Color TFT panels (T114, T096, Wireless Tracker) are wrapped as 1bpp displays for
 
 ### 8.2 Pages (Button UI)
 
-**Companion** (up to 12 pages): Messages, Recent, Radio, Bluetooth, Advert, GPS, Buzzer (if buzzer present), LEDs, Sensors, Offgrid, DFU, Shutdown
+**Companion** (up to 14 pages): Messages, Recent, Radio, Traffic, Bluetooth, WiFi (WiFi companion builds only), Advert, GPS, Buzzer (if buzzer present), LEDs, Sensors, Offgrid, DFU, Shutdown
+
+Connection state on these pages: "an app is connected" (`UI_EVENT_APP_CONNECTED` / `_DISCONNECTED`, any transport) gates the buzzer, the message LED flash and the "Connected" line; which transport it is comes from `ui_set_link_transports()` (`UI_LINK_BLE` / `_USB` / `_TCP`, pushed by `process_link_change()` on every link edge). The Messages badge names the transport; the Bluetooth page says "Connected" only for a BLE client. The WiFi page shows the station state, SSID, IPv4 address, TCP port and whether an app is on the socket, pushed every housekeeping tick by `companion_wifi_ui_refresh()` through `ui_set_wifi()` (redraws only on a change, e-paper included). The joystick UI shows the same WiFi details as System > Info > WiFi (`WifiScreen`) on WiFi companion builds (ThinkNode M9); elsewhere its two hooks are no-ops.
 
 **Repeater** (3 pages): Status, Radio, Shutdown
 
@@ -1007,8 +1009,8 @@ Pages with a **shared** flow that only tints per-row (Recent, GPS, Sensors,
 Status) stay as single functions with inline `if (mc_display_has_color())` —
 that already is the "one layout, colored" ideal, and the color branch
 dead-code-eliminates on mono via the constant-false `mc_display_has_color()`.
-Split pages: Messages, Radio, Traffic, Bluetooth, Advert, LEDs, Offgrid, DFU,
-Shutdown.
+Split pages: Messages, Radio, Traffic, Bluetooth, WiFi, Advert, LEDs, Offgrid,
+DFU, Shutdown.
 
 ### 8.3 Multi-Tap Input
 

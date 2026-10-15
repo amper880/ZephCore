@@ -53,6 +53,7 @@
 #include <zephyr/drivers/gpio.h>
 #include <zephyr/input/input.h>
 #include <zephyr/dt-bindings/input/input-event-codes.h>
+#include <stdio.h>
 #include <string.h>
 
 #include <zephyr_poweroff.h>
@@ -195,7 +196,7 @@ static void splash_work_handler(struct k_work *work)
 
 static void schedule_render(void);
 static void schedule_render_auto(void);
-static void set_ble_connected(bool connected);
+static void set_app_connected(bool connected);
 
 static void advert_defer_handler(struct k_work *work)
 {
@@ -819,7 +820,7 @@ void ui_notify(enum ui_event event)
 		is_msg_event = true;
 #ifdef CONFIG_ZEPHCORE_UI_BUZZER
 		/* Only buzz if no phone is connected to receive the message */
-		if (!get_state()->ble_connected) {
+		if (!get_state()->app_connected) {
 			buzzer_play(MELODY_MSG_CONTACT);
 		}
 #endif
@@ -828,7 +829,7 @@ void ui_notify(enum ui_event event)
 	case UI_EVENT_CHANNEL_MSG:
 		is_msg_event = true;
 #ifdef CONFIG_ZEPHCORE_UI_BUZZER
-		if (!get_state()->ble_connected) {
+		if (!get_state()->app_connected) {
 			buzzer_play(MELODY_MSG_CHANNEL);
 		}
 #endif
@@ -837,7 +838,7 @@ void ui_notify(enum ui_event event)
 	case UI_EVENT_ROOM_MSG:
 		is_msg_event = true;
 #ifdef CONFIG_ZEPHCORE_UI_BUZZER
-		if (!get_state()->ble_connected) {
+		if (!get_state()->app_connected) {
 			buzzer_play(MELODY_MSG_CHANNEL);
 		}
 #endif
@@ -849,23 +850,23 @@ void ui_notify(enum ui_event event)
 #endif
 		break;
 
-	case UI_EVENT_BLE_CONNECTED:
-		set_ble_connected(true);
+	case UI_EVENT_APP_CONNECTED:
+		set_app_connected(true);
 		break;
 
-	case UI_EVENT_BLE_DISCONNECTED:
-		set_ble_connected(false);
+	case UI_EVENT_APP_DISCONNECTED:
+		set_app_connected(false);
 		break;
 
 	default:
 		break;
 	}
 
-	if (is_msg_event && !get_state()->ble_connected) {
+	if (is_msg_event && !get_state()->app_connected) {
 		ui_led_flash_msg();
 	}
 
-	/* Wake display on non-message notifications (BLE connect/disconnect etc).
+	/* Wake display on non-message notifications (app connect/disconnect etc).
 	 * Message notifications use buzzer + LED flash instead of waking the display. */
 #ifdef CONFIG_ZEPHCORE_UI_DISPLAY
 #ifndef ZEPHCORE_REPEATER
@@ -910,11 +911,11 @@ void ui_set_msg_count(uint16_t count)
 #endif
 }
 
-static void set_ble_connected(bool connected)
+static void set_app_connected(bool connected)
 {
 	struct ui_state *s = get_state();
 
-	s->ble_connected = connected;
+	s->app_connected = connected;
 
 	if (ui_initialized) {
 		schedule_render();
@@ -1123,6 +1124,53 @@ void ui_set_ble_enabled(bool enabled)
 	struct ui_state *s = get_state();
 
 	s->ble_enabled = enabled;
+}
+
+void ui_set_link_transports(uint8_t mask)
+{
+	struct ui_state *s = get_state();
+
+	if (s->link_transports == mask) {
+		return;
+	}
+	s->link_transports = mask;
+	if (ui_initialized) {
+		schedule_render();
+	}
+}
+
+void ui_set_wifi(uint8_t state, const char *ssid, const char *ip, uint16_t port)
+{
+#if IS_ENABLED(CONFIG_ZEPHCORE_COMPANION_WIFI)
+	struct ui_state *s = get_state();
+	char new_ssid[sizeof(s->wifi_ssid)];
+	char new_ip[sizeof(s->wifi_ip)];
+
+	snprintf(new_ssid, sizeof(new_ssid), "%s", ssid ? ssid : "");
+	snprintf(new_ip, sizeof(new_ip), "%s", ip ? ip : "");
+
+	if (s->wifi_state == state && s->wifi_port == port &&
+	    strcmp(s->wifi_ssid, new_ssid) == 0 && strcmp(s->wifi_ip, new_ip) == 0) {
+		return;
+	}
+	s->wifi_state = state;
+	s->wifi_port = port;
+	memcpy(s->wifi_ssid, new_ssid, sizeof(new_ssid));
+	memcpy(s->wifi_ip, new_ip, sizeof(new_ip));
+
+	/* Repaint only a page that shows it; e-paper included, since this
+	 * changes rarely. */
+#ifdef CONFIG_ZEPHCORE_UI_DISPLAY
+	if (ui_initialized && ui_pages_current() == UI_PAGE_WIFI) {
+		schedule_render();
+	}
+#endif
+#else
+	ARG_UNUSED(state);
+	ARG_UNUSED(ssid);
+	ARG_UNUSED(ip);
+	ARG_UNUSED(port);
+#endif
 }
 
 void ui_set_buzzer_mode(uint8_t mode)

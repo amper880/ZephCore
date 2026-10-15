@@ -170,6 +170,9 @@ static const enum ui_page active_pages[] = {
 	UI_PAGE_RADIO,
 	UI_PAGE_TRAFFIC,
 	UI_PAGE_BLUETOOTH,
+#ifdef CONFIG_ZEPHCORE_COMPANION_WIFI
+	UI_PAGE_WIFI,
+#endif
 	UI_PAGE_ADVERT,
 	UI_PAGE_GPS,
 #ifdef CONFIG_ZEPHCORE_UI_BUZZER
@@ -454,6 +457,40 @@ static const char *radio_state_label(void)
 	       state.lora_radio_ready ? "RDY" : "WAIT";
 }
 
+/* The transport the app is connected on (BLE first when several are), for the
+ * home page. Meaningful only while state.app_connected. */
+static const char *link_label(void)
+{
+	return (state.link_transports & UI_LINK_BLE) ? "BLE" :
+	       (state.link_transports & UI_LINK_TCP) ? "WiFi" :
+	       (state.link_transports & UI_LINK_USB) ? "USB" : "App";
+}
+
+#if MC_DISPLAY_COLOR_PANEL
+/* The home page's link badge: "<transport> OK" while an app is connected,
+ * else whether BLE is advertising or off. */
+static const char *link_badge(char *buf, size_t len)
+{
+	if (state.app_connected) {
+		snprintf(buf, len, "%s OK", link_label());
+		return buf;
+	}
+	return state.ble_enabled ? "BLE ADV" : "BLE OFF";
+}
+
+static uint16_t link_badge_color(void)
+{
+	return state.app_connected ? UI_COLOR_OK :
+	       state.ble_enabled ? UI_COLOR_WARN : UI_COLOR_DISABLED;
+}
+#endif
+
+/* True when BLE itself has a client (not just some transport). */
+static bool ble_link_up(void)
+{
+	return (state.link_transports & UI_LINK_BLE) != 0;
+}
+
 #if MC_DISPLAY_COLOR_PANEL
 static uint8_t clamp_activity_delta(uint32_t delta)
 {
@@ -565,6 +602,7 @@ static const char *tiny_page_title(enum ui_page p)
 	case UI_PAGE_RADIO:     return "RADIO";
 	case UI_PAGE_TRAFFIC:   return "TRAFFIC";
 	case UI_PAGE_BLUETOOTH: return "BLUETOOTH";
+	case UI_PAGE_WIFI:      return "WIFI";
 	case UI_PAGE_ADVERT:    return "ADVERT";
 	case UI_PAGE_GPS:       return "GPS";
 	case UI_PAGE_BUZZER:    return "BUZZER";
@@ -601,14 +639,19 @@ static void render_tiny_title(void)
  */
 static void render_messages_mono(void)
 {
-	/* 3 centered rows: msg count, BLE status, offgrid status */
+	/* 3 centered rows: msg count, link status, offgrid status */
 	char buf[24];
 
 	if (ui_tiny()) {
 		snprintf(buf, sizeof(buf), "MSG:%u", state.msg_count);
 		draw_centered(centered_row(0, 3), buf);
-		draw_centered(centered_row(1, 3),
-			      state.ble_connected ? "BLE:conn" : "BLE:adv");
+		if (state.app_connected) {
+			snprintf(buf, sizeof(buf), "%s:conn", link_label());
+		} else {
+			snprintf(buf, sizeof(buf), "BLE:%s",
+				 state.ble_enabled ? "adv" : "off");
+		}
+		draw_centered(centered_row(1, 3), buf);
 
 		uint32_t up_s = (uint32_t)(k_uptime_get() / 1000);
 
@@ -621,8 +664,9 @@ static void render_messages_mono(void)
 	snprintf(buf, sizeof(buf), "MSG: %u", state.msg_count);
 	draw_centered(centered_row(0, 4), buf);
 
-	if (state.ble_connected) {
-		draw_centered(centered_row(1, 4), "< Connected >");
+	if (state.app_connected) {
+		snprintf(buf, sizeof(buf), "< Connected: %s >", link_label());
+		draw_centered(centered_row(1, 4), buf);
 	} else {
 		draw_centered(centered_row(1, 4), "Waiting for app...");
 	}
@@ -644,15 +688,15 @@ static void render_messages_color(void)
 
 	if (use_compact_color_home()) {
 		int y = CONTENT_Y;
-		uint16_t ble_color = state.ble_connected ? UI_COLOR_OK : UI_COLOR_WARN;
-		const char *ble = state.ble_connected ? "BLE OK" : "BLE ADV";
+		char badge[12];
+		const char *link = link_badge(badge, sizeof(badge));
 		const char *radio = radio_state_label();
 		uint16_t radio_color = state.lora_tx_active ? UI_COLOR_TX :
 				       state.lora_in_rx ? UI_COLOR_RX :
 				       state.lora_radio_ready ? UI_COLOR_OK
 							      : UI_COLOR_WARN;
 
-		draw_badge(0, y, ble, ble_color);
+		draw_badge(0, y, link, link_badge_color());
 		draw_badge(DISP_W - color_text_width(radio) - 4, y, radio,
 			   radio_color);
 		y += LINE_H + 2;
@@ -663,7 +707,7 @@ static void render_messages_color(void)
 				      state.msg_count ? UI_COLOR_WARN : UI_COLOR_VALUE);
 		y += LINE_H;
 
-		if (state.ble_connected) {
+		if (state.app_connected) {
 			draw_centered_color(y, "Connected", UI_COLOR_OK);
 		} else {
 			mc_display_color_text(30, y, "Waiting for app", UI_COLOR_WARN);
@@ -685,10 +729,9 @@ static void render_messages_color(void)
 	}
 
 	int y = CONTENT_Y;
-	uint16_t ble_color = state.ble_connected ? UI_COLOR_OK : UI_COLOR_WARN;
-	const char *ble = state.ble_connected ? "BLE OK" : "BLE ADV";
+	char badge[12];
 
-	draw_badge(0, y, ble, ble_color);
+	draw_badge(0, y, link_badge(badge, sizeof(badge)), link_badge_color());
 	draw_badge(DISP_W - color_text_width(state.offgrid_enabled ? "GRID" : "LOCAL") - 4,
 		   y, state.offgrid_enabled ? "GRID" : "LOCAL",
 		   state.offgrid_enabled ? UI_COLOR_ACTIVE : UI_COLOR_DISABLED);
@@ -700,7 +743,7 @@ static void render_messages_color(void)
 			      state.msg_count ? UI_COLOR_WARN : UI_COLOR_VALUE);
 	y += LINE_H;
 
-	if (state.ble_connected) {
+	if (state.app_connected) {
 		draw_centered_color(y, "Connected", UI_COLOR_OK);
 	} else {
 		draw_centered_color(y, "Waiting for app", UI_COLOR_WARN);
@@ -1008,7 +1051,7 @@ static void render_bluetooth_mono(void)
 		return;
 	}
 
-	if (state.ble_connected) {
+	if (ble_link_up()) {
 		draw_centered(centered_row(0, 2), "BLE: Connected");
 		draw_centered(centered_row(1, 2), "Press to Disable");
 	} else {
@@ -1022,12 +1065,12 @@ static void render_bluetooth_color(void)
 {
 	int y = CONTENT_Y;
 	uint16_t color = !state.ble_enabled ? UI_COLOR_DISABLED :
-			 state.ble_connected ? UI_COLOR_OK : UI_COLOR_WARN;
+			 ble_link_up() ? UI_COLOR_OK : UI_COLOR_WARN;
 
 	draw_badge(0, y, "BLE", color);
 	mc_display_color_text(32, y,
 			      !state.ble_enabled ? "disabled" :
-			      state.ble_connected ? "connected" : "advertising",
+			      ble_link_up() ? "connected" : "advertising",
 			      color);
 	y += LINE_H + (FONT_H / 4);
 	draw_centered_color(y,
@@ -1047,6 +1090,81 @@ static void render_bluetooth(void)
 #endif
 	render_bluetooth_mono();
 }
+
+#ifdef CONFIG_ZEPHCORE_COMPANION_WIFI
+/* WiFi page: state, network, and the address the app connects to. */
+static void render_wifi_mono(void)
+{
+	char buf[24];
+
+	if (state.wifi_state == UI_WIFI_OFF) {
+		draw_centered(centered_row(0, 2), "WiFi: OFF");
+		draw_centered(centered_row(1, 2), "Set up via CLI");
+		return;
+	}
+	if (state.wifi_state == UI_WIFI_JOINING) {
+		draw_centered(centered_row(0, 2), "WiFi: Joining");
+		draw_centered(centered_row(1, 2), state.wifi_ssid);
+		return;
+	}
+
+	draw_centered(centered_row(0, 4), state.wifi_ssid);
+	draw_centered(centered_row(1, 4), state.wifi_ip);
+	snprintf(buf, sizeof(buf), "Port %u", state.wifi_port);
+	draw_centered(centered_row(2, 4), buf);
+	draw_centered(centered_row(3, 4),
+		      (state.link_transports & UI_LINK_TCP) ? "App connected"
+							    : "No app");
+}
+
+#if MC_DISPLAY_COLOR_PANEL
+static void render_wifi_color(void)
+{
+	int y = CONTENT_Y;
+	char buf[8];
+	uint16_t color = state.wifi_state == UI_WIFI_UP ? UI_COLOR_OK :
+			 state.wifi_state == UI_WIFI_JOINING ? UI_COLOR_WARN :
+			 UI_COLOR_DISABLED;
+
+	draw_badge(0, y, "WiFi", color);
+	mc_display_color_text(color_text_width("WiFi") + 8, y,
+			      state.wifi_state == UI_WIFI_UP ? "connected" :
+			      state.wifi_state == UI_WIFI_JOINING ? "joining" : "off",
+			      color);
+	y += LINE_H + (FONT_H / 4);
+
+	if (state.wifi_state == UI_WIFI_OFF) {
+		draw_centered_color(y, "Set up via CLI", UI_COLOR_VALUE);
+		return;
+	}
+	draw_color_segments(y, "SSID ", state.wifi_ssid, UI_COLOR_VALUE);
+	y += LINE_H;
+	if (state.wifi_state == UI_WIFI_JOINING) {
+		return;
+	}
+	draw_color_segments(y, "IP   ", state.wifi_ip, UI_COLOR_VALUE);
+	y += LINE_H;
+	snprintf(buf, sizeof(buf), "%u", state.wifi_port);
+	draw_color_segments(y, "Port ", buf, UI_COLOR_VALUE);
+	y += LINE_H;
+	draw_color_segments(y, "App  ",
+			    (state.link_transports & UI_LINK_TCP) ? "connected" : "none",
+			    (state.link_transports & UI_LINK_TCP) ? UI_COLOR_OK
+								  : UI_COLOR_DISABLED);
+}
+#endif /* MC_DISPLAY_COLOR_PANEL */
+
+static void render_wifi(void)
+{
+#if MC_DISPLAY_COLOR_PANEL
+	if (mc_display_has_color()) {
+		render_wifi_color();
+		return;
+	}
+#endif
+	render_wifi_mono();
+}
+#endif /* CONFIG_ZEPHCORE_COMPANION_WIFI */
 
 static void render_advert_mono(void)
 {
@@ -1643,6 +1761,9 @@ static const page_render_fn renderers[] = {
 	[UI_PAGE_RADIO]     = render_radio,
 	[UI_PAGE_TRAFFIC]   = render_traffic,
 	[UI_PAGE_BLUETOOTH] = render_bluetooth,
+#ifdef CONFIG_ZEPHCORE_COMPANION_WIFI
+	[UI_PAGE_WIFI]      = render_wifi,
+#endif
 	[UI_PAGE_ADVERT]    = render_advert,
 	[UI_PAGE_GPS]       = render_gps,
 	[UI_PAGE_BUZZER]    = render_buzzer,

@@ -1,7 +1,7 @@
 # ZephCore 1.18.0-zephcore
 
-Safer off-grid mode, working buttons on four boards with a display, a GPS clock fix, a new KISS
-modem role, and the changes from upstream MeshCore 1.18.0.
+Safer off-grid mode, working buttons on four boards with a display, a WiFi page on the display of
+WiFi companions, a GPS clock fix, a new KISS modem role, and the changes from upstream MeshCore 1.18.0.
 
 > [!NOTE]
 > A normal upgrade keeps your identity, settings, contacts and phone pairing.
@@ -30,6 +30,20 @@ More in [OFFGRID.md](../docs/OFFGRID.md). Thanks to **N8HOP** for the report.
 - **Heltec Mesh Node T1, both LR2021 LoRa Plus EVK kits:** Power Off, DFU and Offgrid can be
   confirmed again.
 - On all four boards the confirmation is a second **hold** within 3 seconds.
+
+## Display: WiFi page, and the right connection shown
+
+- **New WiFi page** on WiFi companions with a one-button display (Heltec V3, V4, V4.3, Wireless
+  Tracker, T3S3, Station G2 and others), next to the Bluetooth page. It shows whether WiFi is off,
+  joining or connected, and once connected the network, IP address and port to enter in the app,
+  and whether the app is connected over WiFi. On the ThinkNode M9 the same details are under
+  **System > Info > WiFi**.
+- **The home page names the connection:** "WiFi OK", "USB OK" or "BLE OK" instead of always
+  "BLE OK", and "BLE OFF" when Bluetooth is turned off and no app is connected.
+- **The Bluetooth page says "Connected" only for a Bluetooth connection.** An app connected over
+  WiFi or USB used to show there too.
+
+Thanks to **bisbille** for the report.
 
 ## GPS no longer sets the clock to an old time
 

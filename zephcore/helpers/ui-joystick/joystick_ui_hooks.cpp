@@ -117,13 +117,13 @@ extern "C" void ui_notify(enum ui_event event)
 	}
 
 	switch (event) {
-	case UI_EVENT_BLE_CONNECTED:
-		s_task->setBLEConnected(true);
+	case UI_EVENT_APP_CONNECTED:
+		s_task->setAppConnected(true);
 		s_task->notify();
 		break;
 
-	case UI_EVENT_BLE_DISCONNECTED:
-		s_task->setBLEConnected(false);
+	case UI_EVENT_APP_DISCONNECTED:
+		s_task->setAppConnected(false);
 		s_task->notify();
 		break;
 
@@ -269,4 +269,24 @@ extern "C" void ui_set_gps_enabled(bool) {}
 extern "C" void ui_set_gps_state(uint8_t, uint32_t, uint32_t) {}
 extern "C" void ui_set_buzzer_mode(uint8_t) {}
 extern "C" void ui_set_offgrid_mode(bool) {}
+/* Kept for the WiFi screen (System > Info > WiFi); WiFi companion builds only.
+ * Both arrive on the main thread, where the UI runs. */
+#ifdef CONFIG_ZEPHCORE_COMPANION_WIFI
+extern "C" void ui_set_link_transports(uint8_t mask)
+{
+	if (s_task) {
+		s_task->setLinkTransports(mask);
+	}
+}
+
+extern "C" void ui_set_wifi(uint8_t state, const char *ssid, const char *ip, uint16_t port)
+{
+	if (s_task) {
+		s_task->setWifi(state, ssid, ip, port);
+	}
+}
+#else
+extern "C" void ui_set_link_transports(uint8_t) {}
+extern "C" void ui_set_wifi(uint8_t, const char *, const char *, uint16_t) {}
+#endif
 extern "C" void ui_set_msg_count(uint16_t count) {}

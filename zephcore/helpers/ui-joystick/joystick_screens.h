@@ -287,6 +287,17 @@ public:
 	bool handleInput(char c) override;
 };
 
+#ifdef CONFIG_ZEPHCORE_COMPANION_WIFI
+/* ===== WifiScreen: WiFi companion state and the address the app uses ===== */
+class WifiScreen : public UIScreen {
+	JoystickUITask *_task;
+public:
+	WifiScreen(JoystickUITask *task);
+	int render(JoystickDisplay &display) override;
+	bool handleInput(char c) override;
+};
+#endif
+
 /* ===== StopwatchScreen ===== */
 class StopwatchScreen : public UIScreen {
 	JoystickUITask *_task;

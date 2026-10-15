@@ -74,6 +74,9 @@ public:
 	void gotoRenameNodeScreen();
 	void gotoBLECodeScreen();
 	void gotoStatsScreen();
+#ifdef CONFIG_ZEPHCORE_COMPANION_WIFI
+	void gotoWifiScreen();
+#endif
 	void gotoStopwatchScreen();
 	void gotoCountdownScreen();
 	void gotoSnakeScreen();
@@ -180,10 +183,22 @@ public:
 	uint32_t getPktSent() const { return _pkt_sent; }
 	uint32_t getPktErrors() const { return _pkt_errors; }
 
-	/* BLE status (fed from main companion loop) */
-	void setBLEConnected(bool connected) { _ble_connected = connected; }
-	bool isBLEConnected() const { return _ble_connected; }
+	/* An app is connected on some transport (fed from main companion loop) */
+	void setAppConnected(bool connected) { _app_connected = connected; }
+	bool isAppConnected() const { return _app_connected; }
 	void setBLEEnabled(bool enabled) { _ble_enabled = enabled; }
+
+#ifdef CONFIG_ZEPHCORE_COMPANION_WIFI
+	/* WiFi companion state, pushed by ui_set_wifi() / ui_set_link_transports()
+	 * on the main thread, read by WifiScreen. */
+	void setWifi(uint8_t state, const char *ssid, const char *ip, uint16_t port);
+	void setLinkTransports(uint8_t mask) { _link_transports = mask; }
+	uint8_t getWifiState() const { return _wifi_state; }
+	const char *getWifiSsid() const { return _wifi_ssid; }
+	const char *getWifiIp() const { return _wifi_ip; }
+	uint16_t getWifiPort() const { return _wifi_port; }
+	uint8_t getLinkTransports() const { return _link_transports; }
+#endif
 
 	/* RepeaterAdmin callbacks */
 	void onRepeaterAdminLoginResult(const uint8_t *pub_key_prefix, bool success,
@@ -233,6 +248,9 @@ private:
 	RenameNodeScreen *_rename_node;
 	BLECodeScreen *_ble_code;
 	StatsScreen *_stats;
+#ifdef CONFIG_ZEPHCORE_COMPANION_WIFI
+	WifiScreen *_wifi = nullptr;
+#endif
 	StopwatchScreen *_stopwatch;
 	CountdownScreen *_countdown;
 	SnakeScreen *_snake;
@@ -264,8 +282,15 @@ private:
 	int _battery_display_mode;
 	uint8_t _brightness;
 	bool _wake_on_msg;
-	bool _ble_connected;
+	bool _app_connected;
 	bool _ble_enabled;
+#ifdef CONFIG_ZEPHCORE_COMPANION_WIFI
+	uint8_t _wifi_state = 0;       /* enum ui_wifi_state */
+	uint8_t _link_transports = 0;  /* UI_LINK_* bits */
+	uint16_t _wifi_port = 0;
+	char _wifi_ssid[33] = {};
+	char _wifi_ip[16] = {};
+#endif
 	int16_t _noise_floor;
 	uint32_t _pkt_recv, _pkt_sent, _pkt_errors;
 

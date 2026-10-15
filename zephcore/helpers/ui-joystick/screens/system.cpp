@@ -11,6 +11,7 @@
 #include <helpers/time_sync.h>
 #include <helpers/ui/display.h>
 #include <helpers/ui/ui_mesh_actions.h>
+#include <helpers/ui/ui_task.h>
 #include <zephyr/kernel.h>
 #include <zephyr/random/random.h>
 #include <math.h>
@@ -40,7 +41,11 @@ enum SysDspItem { SYSDSP_BRIGHT=0, SYSDSP_SCROFF, SYSDSP_BATT, SYSDSP_WAKE,
 #endif
 									SYSDSP_INPUT_ROTATE, SYSDSP_COUNT };
 /* Info submenu items */
-enum SysInfoItem { SYSINFO_TIME=0, SYSINFO_STATS, SYSINFO_RADIO, SYSINFO_COUNT };
+enum SysInfoItem { SYSINFO_TIME=0, SYSINFO_STATS, SYSINFO_RADIO,
+#ifdef CONFIG_ZEPHCORE_COMPANION_WIFI
+				 SYSINFO_WIFI,
+#endif
+				 SYSINFO_COUNT };
 /* Power submenu items */
 enum SysPwrItem  { SYSPWR_REBOOT=0, SYSPWR_SHUTDOWN, SYSPWR_COUNT };
 
@@ -112,7 +117,11 @@ int SystemScreen::render(JoystickDisplay &display)
 		return 500;
 	}
 	if (_mode == SYSMODE_INFO) {
-		static const char * const kItems[SYSINFO_COUNT] = { "Time", "System Stats", "Radio Stats" };
+		static const char * const kItems[SYSINFO_COUNT] = { "Time", "System Stats", "Radio Stats",
+#ifdef CONFIG_ZEPHCORE_COMPANION_WIFI
+								     "WiFi",
+#endif
+		};
 		renderSubMenu(display, "Info", _selected, kItems, SYSINFO_COUNT);
 		return 500;
 	}
@@ -258,6 +267,9 @@ bool SystemScreen::handleInput(char c)
 			case SYSINFO_TIME:  _task->gotoSystemTimeScreen(); return true;
 			case SYSINFO_STATS: _task->gotoStatsScreen();      return true;
 			case SYSINFO_RADIO: _task->gotoRadioStatsScreen(); return true;
+#ifdef CONFIG_ZEPHCORE_COMPANION_WIFI
+			case SYSINFO_WIFI:  _task->gotoWifiScreen();       return true;
+#endif
 			default: return false;
 			}
 		}
@@ -969,6 +981,60 @@ bool StatsScreen::handleInput(char c)
 	if (c == KEY_CANCEL || c == KEY_HOME) { _task->gotoSystemScreen(); return true; }
 	return false;
 }
+
+#ifdef CONFIG_ZEPHCORE_COMPANION_WIFI
+WifiScreen::WifiScreen(JoystickUITask *task)
+	: _task(task)
+{
+}
+
+/* Same states and wording as the button UI's WiFi page; redrawn every second. */
+int WifiScreen::render(JoystickDisplay &display)
+{
+	renderScreenHeader(display, "WiFi", 0, 0);
+	display.setTextSize(1);
+
+	char line[48];
+	int y = kContentY + 2;
+	uint8_t state = _task->getWifiState();
+
+	if (state == UI_WIFI_OFF) {
+		display.setColor(JoystickDisplay::LIGHT);
+		display.drawTextLeftAlign(0, y, "Status: off");
+		y += kMenuLineH;
+		display.drawTextLeftAlign(0, y, "Set up via CLI");
+		return 1000;
+	}
+
+	display.setColor(state == UI_WIFI_UP ? JoystickDisplay::GREEN : JoystickDisplay::YELLOW);
+	display.drawTextLeftAlign(0, y, state == UI_WIFI_UP ? "Status: connected" : "Status: joining");
+	y += kMenuLineH;
+
+	display.setColor(JoystickDisplay::LIGHT);
+	snprintf(line, sizeof(line), "SSID: %s", _task->getWifiSsid());
+	display.drawTextLeftAlign(0, y, line);
+	y += kMenuLineH;
+	if (state != UI_WIFI_UP) {
+		return 1000;
+	}
+
+	snprintf(line, sizeof(line), "IP: %s", _task->getWifiIp());
+	display.drawTextLeftAlign(0, y, line);
+	y += kMenuLineH;
+	snprintf(line, sizeof(line), "Port: %u", (unsigned)_task->getWifiPort());
+	display.drawTextLeftAlign(0, y, line);
+	y += kMenuLineH;
+	display.drawTextLeftAlign(0, y, (_task->getLinkTransports() & UI_LINK_TCP)
+				       ? "App: connected" : "App: none");
+	return 1000;
+}
+
+bool WifiScreen::handleInput(char c)
+{
+	if (c == KEY_CANCEL || c == KEY_HOME) { _task->gotoSystemScreen(); return true; }
+	return false;
+}
+#endif
 
 TelemetryScreen::TelemetryScreen(JoystickUITask *task, mesh::RTCClock *rtc)
 	: _task(task), _rtc(rtc), _selected(0)

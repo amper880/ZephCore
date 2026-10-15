@@ -25,6 +25,7 @@ enum ui_page {
 	UI_PAGE_RADIO,          /* LoRa params (freq, SF, BW, CR, power, noise) */
 	UI_PAGE_TRAFFIC,        /* TX/RX packet activity graph */
 	UI_PAGE_BLUETOOTH,      /* BLE toggle */
+	UI_PAGE_WIFI,           /* WiFi companion state and IP (WiFi builds) */
 	UI_PAGE_ADVERT,         /* Send broadcast advert */
 	UI_PAGE_GPS,            /* GPS status / position */
 	UI_PAGE_BUZZER,         /* Buzzer mute toggle */
@@ -49,7 +50,8 @@ struct ui_state {
 
 	/* Messages page */
 	uint16_t msg_count;
-	bool     ble_connected;
+	bool     app_connected;    /* an app is connected, on any transport */
+	uint8_t  link_transports;  /* UI_LINK_* bits: which transports have one */
 
 	/* Recently heard */
 	struct {
@@ -78,6 +80,14 @@ struct ui_state {
 
 	/* Bluetooth page */
 	bool     ble_enabled;      /* true = BLE active, false = serial mode */
+
+#ifdef CONFIG_ZEPHCORE_COMPANION_WIFI
+	/* WiFi page */
+	uint8_t  wifi_state;       /* enum ui_wifi_state */
+	uint16_t wifi_port;        /* TCP port of the app socket */
+	char     wifi_ssid[33];
+	char     wifi_ip[16];      /* dotted IPv4, "" without a lease */
+#endif
 
 	/* GPS page */
 	bool     gps_available;    /* true = GNSS hardware detected at boot */
