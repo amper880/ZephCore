@@ -79,7 +79,8 @@ void gps_process_event(void);
 /* Initialize GPS manager (call once at boot) */
 int gps_manager_init(void);
 
-/* GPS functions */
+/* GPS functions. Available: the GNSS device came up and, once the first acquire
+ * window since boot has run its probe, the module sent NMEA. */
 bool gps_is_available(void);
 bool gps_is_enabled(void);
 void gps_enable(bool enable);

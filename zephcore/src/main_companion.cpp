@@ -392,6 +392,7 @@ static void mesh_event_loop(void)
 		 * system work queue signals, so it would deadlock there. */
 		if (events & MESH_EVENT_GPS_ACTION) {
 			gps_process_event();
+			ui_set_gps_available(gps_is_available());  /* the boot probe may clear it */
 		}
 
 		/* Inbound frames and CLI lines, before loop() drains what they

@@ -39,6 +39,21 @@ back. Now only satellite-solved positions count, five in a row. A fix takes abou
 This applies to every board with a GPS. Thanks to **Innocent Killer 101** for the report and the
 measurements.
 
+## No GPS fitted, no GPS searching
+
+Boards with an optional GPS connector (Heltec V3, V4 and V4.3, RAK4631, XIAO nRF54L15 and others)
+searched for a GPS that was not there: for five minutes after boot on a repeater, and again after
+every telemetry request. On an ESP32 board that kept the processor out of light sleep the whole
+time.
+
+- **The first time the GPS powers up after a reboot, the node listens for it for 10 seconds.**
+  That is at boot if your GPS is on, or when you first turn it on. If nothing answers, the GPS is
+  treated as not fitted until the next reboot, as upstream MeshCore does: `gps` answers
+  `Can't find GPS`, and telemetry no longer wakes it.
+- Your GPS setting is kept, so a GPS you fit later is found at the next boot.
+
+Thanks to **svenlange2** for the report.
+
 ## New: KISS modem role
 
 A ZephCore node can now act as a plain LoRa modem for a program on a computer, as upstream

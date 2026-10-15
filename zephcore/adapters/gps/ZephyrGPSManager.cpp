@@ -17,6 +17,8 @@
  *   full power-off instead of its state-keeping one (see gps_go_to_standby)
  * - Full power-off also on user-disable, on boot with the GPS disabled and on
  *   System OFF; the acquisition after any full power-off gets the long window
+ * - Boot probe: no NMEA sentence in the first window's first GPS_PROBE_MS =
+ *   no module; powered off and not available until the next boot
  */
 
 #include "gps_internal.h"
@@ -60,6 +62,7 @@ static gps_event_callback_t gps_event_cb = NULL;
 #define GPS_ACTION_FIX_DONE BIT(2)  /* Got enough good fixes → go to standby */
 #define GPS_ACTION_FIX      BIT(3)  /* A validated fix for gps_fix_cb (fix_pending) */
 #define GPS_ACTION_REAPPLY  BIT(4)  /* Next module re-send step (gps_reapply_step) */
+#define GPS_ACTION_PROBE    BIT(5)  /* Probe window over → check for NMEA (gps_probe_check) */
 static atomic_t pending_gps_actions;
 
 /* GPS Power Management State Machine */
@@ -120,17 +123,38 @@ static struct {
 } fix_pending;
 
 static bool gps_repeater_mode = false;  /* True = repeater (time sync only), False = companion */
-static bool gnss_activity_seen_this_cycle = false;  /* Runtime-only: set by GNSS callback while acquiring */
+
+/* Boot probe (upstream's GPS detection): the first acquire window after boot
+ * must parse a GGA or RMC sentence within GPS_PROBE_MS, or the GPS is not
+ * available until the next boot. The position callback is no use here: the
+ * driver publishes only once GGA and RMC carry a valid UTC. Why 10 s:
+ * devdocs/lld/10-peripherals-power.md, "Boot probe". */
+#define GPS_PROBE_MS  10000
+
+/* Parsed-sentence count from the GNSS driver (patch 0005); NULL on a driver
+ * without it, which then gets no probe. */
+extern "C" uint32_t zephcore_gnss_rx_count(void) __attribute__((weak));
+
+static bool probe_pending = true;   /* The next acquire window is the first since boot */
+static uint32_t probe_rx_base;      /* zephcore_gnss_rx_count() when that window started */
 
 /* Forward declarations for work handlers and state functions */
 static void gps_wake_work_fn(struct k_work *work);
 static void gps_timeout_work_fn(struct k_work *work);
+static void gps_probe_work_fn(struct k_work *work);
 static void gps_go_to_standby(void);
 static void gps_start_acquiring(void);
 
 /* Delayable work for event-driven timers (no polling!) */
 static K_WORK_DELAYABLE_DEFINE(gps_wake_work, gps_wake_work_fn);
 static K_WORK_DELAYABLE_DEFINE(gps_timeout_work, gps_timeout_work_fn);
+static K_WORK_DELAYABLE_DEFINE(gps_probe_work, gps_probe_work_fn);
+
+static void gps_probe_cancel(void)
+{
+	k_work_cancel_delayable(&gps_probe_work);
+	atomic_and(&pending_gps_actions, ~GPS_ACTION_PROBE);
+}
 
 #if HAS_GPS_UART && defined(CONFIG_ZEPHCORE_GPS_REAPPLY)
 /* CONFIG_ZEPHCORE_GPS_REAPPLY: after each power-on, wait for the module
@@ -243,11 +267,6 @@ static void gnss_data_cb(const struct device *dev, const struct gnss_data *data)
 		/* Disabled or in standby: ignore NMEA. The driver keeps calling while the
 		 * UART has data, and a module without power control keeps streaming. */
 		return;
-	}
-
-	if (gps_current_state == GPS_STATE_ACQUIRING) {
-		/* Any callback means GNSS hardware/UART path is alive, even without a fix. */
-		gnss_activity_seen_this_cycle = true;
 	}
 
 	LOG_DBG("GNSS callback: fix=%d sats=%d state=%d",
@@ -518,6 +537,7 @@ static void gps_go_to_standby(void)
 	 *   RTC survive the cut and re-acquisition is a warm/hot start, not cold.
 	 * Other non-GPIO boards: software sleep via UART commands (PMTK + UBX). */
 	gps_reapply_cancel();
+	gps_probe_cancel();
 	/* Keep the module's state only for a short interval; past
 	 * gps_standby_max_sec use the full power-off. The same decision on every
 	 * board: gps_power_control() maps it onto the pins. */
@@ -546,7 +566,6 @@ static void gps_start_acquiring(void)
 	LOG_INF("GPS: Waking for %s", gps_repeater_mode ? "time sync" : "position fix");
 	gps_current_state = GPS_STATE_ACQUIRING;
 	consecutive_good_fixes = 0;
-	gnss_activity_seen_this_cycle = false;
 	gps_hold_sleep_lock(true);
 
 	/* Bring the UART back before the module powers up / the wake byte
@@ -554,6 +573,12 @@ static void gps_start_acquiring(void)
 	gps_uart_set_power(true);
 	gps_module_power(true);
 	gps_reapply_start();
+
+	if (probe_pending && zephcore_gnss_rx_count != NULL) {
+		probe_pending = false;
+		probe_rx_base = zephcore_gnss_rx_count();
+		k_work_reschedule(&gps_probe_work, K_MSEC(GPS_PROBE_MS));
+	}
 
 	/* Schedule the standby timeout — unless always-on (interval 0), where the
 	 * GPS stays in continuous acquisition and never sleeps. Every duty window
@@ -601,14 +626,52 @@ static void gps_timeout_work_fn(struct k_work *work)
 	LOG_WRN("GPS: Timeout after %d/%d fixes, deferring standby to main thread",
 		consecutive_good_fixes, GPS_GOOD_FIX_COUNT);
 
-	if (gps_repeater_mode && !gnss_activity_seen_this_cycle) {
-		LOG_WRN("GPS: Repeater acquire window had no GNSS callbacks; retrying on next cycle");
-	}
-
 	atomic_or(&pending_gps_actions, GPS_ACTION_TIMEOUT);
 	if (gps_event_cb) {
 		gps_event_cb();
 	}
+}
+
+/* Work handler: the boot probe's window is over. Main thread decides. */
+static void gps_probe_work_fn(struct k_work *work)
+{
+	ARG_UNUSED(work);
+
+	if (gps_current_state != GPS_STATE_ACQUIRING) {
+		return;
+	}
+
+	atomic_or(&pending_gps_actions, GPS_ACTION_PROBE);
+	if (gps_event_cb) {
+		gps_event_cb();
+	}
+}
+
+/* Main thread: no sentence parsed since the first window began, so no module
+ * (or one at the wrong baud). Power it off, release the UART and the sleep
+ * lock, and report the GPS as not available until the next boot. Nothing is
+ * persisted: prefs.gps_enabled keeps the user's choice. */
+static void gps_probe_check(void)
+{
+	if (zephcore_gnss_rx_count() != probe_rx_base) {
+		LOG_INF("GPS: Module detected");
+		return;
+	}
+
+	LOG_WRN("GPS: No NMEA within %u s of power-on, no module detected",
+		GPS_PROBE_MS / 1000U);
+
+	k_work_cancel_delayable(&gps_wake_work);
+	k_work_cancel_delayable(&gps_timeout_work);
+	gps_reapply_cancel();
+
+	gps_module_power(false, false);
+	gps_uart_set_power(false);
+	gps_hold_sleep_lock(false);
+
+	gps_current_state = GPS_STATE_OFF;
+	gps_enabled = false;
+	gps_available = false;
 }
 
 /* ========== GNSS Init ========== */
@@ -852,6 +915,11 @@ void gps_enable(bool enable)
 		k_work_cancel_delayable(&gps_wake_work);
 		k_work_cancel_delayable(&gps_timeout_work);
 		gps_reapply_cancel();
+		/* A probe cut short is run again by the next enable. */
+		if (k_work_delayable_is_pending(&gps_probe_work)) {
+			probe_pending = true;
+		}
+		gps_probe_cancel();
 
 		/* Full power-off on every board: this off has no end, and any
 		 * state-keeping one (backup sleep, standby pin, VRTC) draws all
@@ -1066,11 +1134,6 @@ void gps_get_state_info(struct gps_state_info *info)
 #endif
 }
 
-#if HAS_GNSS
-/* Parsed-sentence count from the GNSS driver (see gps_module_cfg.cpp). */
-extern "C" uint32_t zephcore_gnss_rx_count(void) __attribute__((weak));
-#endif
-
 void gps_format_diagnostics(char *out, size_t out_size)
 {
 	if (out_size == 0) {
@@ -1157,6 +1220,10 @@ void gps_process_event(void)
 	} else if (actions & (GPS_ACTION_TIMEOUT | GPS_ACTION_FIX_DONE)) {
 		if (gps_current_state == GPS_STATE_ACQUIRING) {
 			gps_go_to_standby();
+		}
+	} else if (actions & GPS_ACTION_PROBE) {
+		if (gps_current_state == GPS_STATE_ACQUIRING) {
+			gps_probe_check();
 		}
 	}
 

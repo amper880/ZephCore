@@ -505,6 +505,7 @@ static void server_event_loop(void)
 		 * modem_chat blocks on system work queue semaphore). */
 		if (events & MESH_EVENT_GPS_ACTION) {
 			gps_process_event();
+			ui_set_gps_available(gps_is_available());  /* the boot probe may clear it */
 		}
 
 		/* Console input: assemble + echo, then run each finished line here

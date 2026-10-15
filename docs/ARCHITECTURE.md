@@ -842,6 +842,10 @@ Loading also range-checks `freq`/`sf`/`bw` and falls back to the compile-time de
 - Three files: `ZephyrGPSManager.cpp` (states, fix validation, public API), `gps_power.cpp` (power line / PMU rail / UART sleep commands, UARTE PM), `gps_module_cfg.cpp` (GNSS-API or PMTK/PCAS/UBX configuration, `get gps diag`); `gps_internal.h` carries the feature detection
 - **Main thread only.** The GNSS callbacks (system work queue) only validate and post: a validated fix is snapshotted and handed to the fix callback by `gps_process_event()` on the main thread, so the callback sets the clock and the node position directly. The UI's GPS toggles post an action too.
 - The SoC light-sleep lock is held only while ACQUIRING (`gps_hold_sleep_lock()`, tracked 1:1), never through standby
+- Boot probe (upstream's GPS detection): the first acquire window since boot must parse a GGA or RMC sentence
+  (`zephcore_gnss_rx_count()`) within 10 s, or the module is powered off and `gps_is_available()` is false until the
+  next boot (`gps`: `Can't find GPS`); `prefs.gps_enabled` is kept. For boards whose optional GPS header is empty
+  (LLD 10 §21)
 - Boot: servers apply `prefs.gps_enabled` like upstream's `applyGpsPrefs()` (`zc.gps_set` in prefs.json marks it a real choice; older files are upgraded to on once, because older firmware ran the GPS regardless). The observer parks its GPS (`gps_park()`)
 
 **Duty cycle vs always-on**

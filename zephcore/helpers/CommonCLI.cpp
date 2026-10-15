@@ -1145,7 +1145,9 @@ void CommonCLI::handleGetCmd(uint32_t sender_timestamp, const char* command, cha
 	} else if (memcmp(config, "gps", 3) == 0) {
 		/* The detail behind the `gps` line: duty-cycle state, fix age,
 		 * position. Per-constellation counts are in get gps diag. */
-		if (!gps_is_enabled()) {
+		if (!_sensors->isGPSDetected()) {
+			strcpy(reply, "> not found");
+		} else if (!gps_is_enabled()) {
 			strcpy(reply, "> off");
 		} else {
 			static const char* const state_str[] = { "off", "standby", "acquiring" };

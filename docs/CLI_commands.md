@@ -164,8 +164,8 @@ Regions control which flood packets the repeater forwards. The region tree is hi
 
 | Command | Description |
 |---------|-------------|
-| `gps` | GPS status in upstream's form: `on, active\|standby, fix\|no fix, N sats`, `off`, or `Can't find GPS`. `standby` (upstream: `deactivated`) means on but asleep between duty-cycle fixes |
-| `get gps` | *(ZephCore only)* The detail: `> on state=<off\|standby\|acquiring> sats=N fix=Ns ago lat= lon=`, or `no fix next=Ns` (seconds to the next wake) |
+| `gps` | GPS status in upstream's form: `on, active\|standby, fix\|no fix, N sats`, `off`, or `Can't find GPS`. `standby` (upstream: `deactivated`) means on but asleep between duty-cycle fixes. `Can't find GPS` also when the boot probe heard no NMEA within 10 s of the first power-on (no module fitted), until the next boot; the other `gps` commands then answer `gps toggle not found` / `gps provider not found` / `error` |
+| `get gps` | *(ZephCore only)* The detail: `> on state=<off\|standby\|acquiring> sats=N fix=Ns ago lat= lon=`, or `no fix next=Ns` (seconds to the next wake); `> off`; `> not found` where `gps` says `Can't find GPS` |
 | `gps diag` | Receiver liveness, in upstream's key form: `req:<0\|1> en:<0\|1> ok:<n> sat:<n> fix:<0\|1> fa:<ms\|never> bc:<n> sc:<n>`. `req` is the requested setting, `en` the module powered and searching (0 in duty-cycle standby), `ok` NMEA sentences the driver has parsed since boot (a count that stops rising means the module or its UART went silent, whatever `sat` says), `fa` the age of the last validated fix, `bc`/`sc` module power-on/off counts. Upstream's UART byte and bad-checksum counters are absent: the GNSS driver only passes valid sentences. Module configuration results are `get gps diag` |
 | `gps sync` | Take a fresh fix now (wake the GPS or extend its window); the fix sets the clock. `gps is off` / `gps provider not found` otherwise |
 | `gps on` | Enable GPS module |
