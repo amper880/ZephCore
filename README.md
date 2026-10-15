@@ -65,6 +65,7 @@ the [supported boards list](docs/supported_boards.md).
 | **Repeater** | Relays packets for everyone else | [Text CLI](docs/CLI_commands.md) over USB, or remote admin over the mesh |
 | **Room server** | A shared message board that keeps posts for clients who were away | Same CLI as the repeater; users log in from the app |
 | **Observer** | Listens only and publishes what it hears to MQTT over WiFi (ESP32) | [Its own small CLI](docs/CLI_commands.md#observer-zephcore-only) over USB |
+| **KISS modem** | Raw LoRa packets for a host program (KISS TNC, as upstream's `kiss_modem`) | [KISS protocol](docs/kiss_modem_protocol.md) over USB |
 
 One role per firmware image; you choose it when you flash.
 
@@ -140,6 +141,7 @@ Roles and extras are config fragments in `zephcore/boards/common/`, added throug
 | `repeater.conf` | Repeater |
 | `room_server.conf` | Room server |
 | `observer.conf` | Observer (ESP32) |
+| `kiss_modem.conf` | KISS modem |
 | `debug.conf` | Logging and asserts |
 | `packet_logging.conf` | One clean RAW/RX/TX line per packet, nothing else |
 

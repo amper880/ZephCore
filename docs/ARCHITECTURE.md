@@ -27,12 +27,13 @@
 
 ## 1. Project Overview
 
-ZephCore is a LoRa mesh networking firmware running on Zephyr RTOS. It supports four device roles:
+ZephCore is a LoRa mesh networking firmware running on Zephyr RTOS. It supports five device roles:
 
 - **Companion**: BLE-connected device paired with a phone app. Full contact/channel/message management.
 - **Repeater**: Autonomous headless relay node. CLI administration via authenticated mesh connections or serial UART.
 - **Room Server**: Headless store-and-forward shared message room (BBS). Reuses the repeater's ACL/region/CLI; pushes new posts to logged-in clients (per-client sync cursor + ACK).
 - **Observer** (ESP32): Listen-only node that publishes received LoRa packets to MQTT over WiFi.
+- **KISS modem**: Raw LoRa packets to and from a host over serial (upstream's `kiss_modem`).
 
 Supported hardware: nRF52840, nRF54L15, nRF54LM20A, ESP32 (classic PICO-D4 and C3/C6/S3), EFR32MG24, and STM32WL (LoRa-E5). Radios: SX126x family (SX1261/62/68, LLCC68, STM32WL sub-GHz), LR1110, SX127x (SX1272/76/78, loramac-node backend), and LR2021 (validated on the MeshTracker X1). A native Linux port runs the full stack on SBCs (Femtofox, Raspberry Pi) via Zephyr `native_sim` — see `LINUX_NATIVE.md`.
 
@@ -103,7 +104,8 @@ zephcore/
 │   ├── RepeaterDataStore.cpp/h   # Repeater-specific persistence paths
 │   ├── RoomServerMesh.cpp/h      # Store-and-forward room server (BBS)
 │   ├── ObserverMesh.cpp/h        # Listen-only WiFi+MQTT observer (ESP32)
-│   └── main_observer.cpp, observer_creds.cpp/h
+│   ├── main_observer.cpp, observer_creds.cpp/h
+│   └── KissModem.cpp/h           # KISS TNC + SetHardware extensions (upstream verbatim)
 │
 ├── helpers/                # Shared utilities
 │   ├── compat/                   # Arduino Stream/SHA256/FILESYSTEM over Zephyr, for upstream-verbatim code
@@ -742,6 +744,24 @@ Headless store-and-forward shared message room (BBS). Clients log in with the ad
 
 Listen-only node (ESP32 only): receives LoRa packets and publishes them to an MQTT broker over WiFi STA (`adapters/mqtt/`, `adapters/wifi/`). Never transmits. Configured at runtime via serial CLI (credentials in `observer_creds.cpp`); build with `boards/common/observer.conf`.
 
+### 6.5.1 KISS modem
+
+Upstream's `examples/kiss_modem` (protocol: [kiss_modem_protocol.md](kiss_modem_protocol.md)). `app/KissModem.cpp/h`
+keep upstream's text, with ZephCore changes fenced; `src/main_kiss_modem.cpp` is the composition root. No `Mesh`
+or `Dispatcher`: the modem drives `LoRaRadio` directly, and the main loop runs the radio's maintenance (noise floor,
+CAD, AGC/drift) as the Dispatcher would. The host serial is the CDC-ACM port, else the console UART, through
+`adapters/transport/ZephyrUartStream` (an Arduino `Stream` over interrupt-driven RX/TX rings); the console driver
+is off in this role so nothing else writes to the port. Event-driven: serial input, LoRa RX and TX-done, host
+output drained, and a one-shot for the sooner of `KissModem::msUntilNextTx()` and the radio's maintenance
+deadline. Differences from upstream:
+- An LBT refusal from `startSendRaw()` returns to the CSMA slot wait until the wait-clear bound (1.5 × the
+  airtime of a 255-byte packet from the start of CSMA), then reports TX failed; upstream reports it at once.
+- A transmit times out only once the radio has concluded it, as in `Dispatcher::loop()`.
+- `SetRadio` outside the `ZC_RADIO_*` ranges (NodePrefs.h) is refused with `HW_ERR_INVALID_PARAM`.
+- No periodic AGC reset: the radio's own deaf-aware maintenance replaces it, as in every role.
+Radio settings live in RAM only (upstream: the same); the identity is `/lfs/repeater/_main.id`, shared with the
+server roles. Build with `boards/common/kiss_modem.conf`.
+
 ### 6.6 CommonCLI Commands
 
 System: `ver`, `board`, `reboot`, `start dfu`, `start ota`, `erase`
@@ -857,7 +877,8 @@ Repeaters and room servers default to `CONFIG_ZEPHCORE_REPEATER_GPS_INTERVAL_SEC
   While the bus is suspended (the computer asleep with the port open) the session is kept but is not a connected
   client: nothing is queued for it, and it does not hold up the clean-up that runs when the last client leaves. Each
   change reaches the main loop as a connect or a disconnect.
-- Servers (repeater, room server, observer) use the CDC port as their serial console.
+- Servers (repeater, room server, observer) use the CDC port as their serial console; the KISS modem uses it for
+  its binary stream.
 
 ### 7.5 Board (`adapters/board/`)
 
@@ -1028,7 +1049,7 @@ prj.conf (base: console; production defaults — LOG=n, ASSERT=n)
 
 ### 9.2 Key Kconfig Choices
 
-- **Role**: `ZEPHCORE_ROLE_COMPANION` (default) vs `ZEPHCORE_ROLE_REPEATER` vs `ZEPHCORE_ROLE_ROOM_SERVER` vs `ZEPHCORE_ROLE_OBSERVER` (selected via `repeater.conf` / `room_server.conf` / `observer.conf`)
+- **Role**: `ZEPHCORE_ROLE_COMPANION` (default) vs `ZEPHCORE_ROLE_REPEATER` vs `ZEPHCORE_ROLE_ROOM_SERVER` vs `ZEPHCORE_ROLE_OBSERVER` vs `ZEPHCORE_ROLE_KISS_MODEM` (selected via `repeater.conf` / `room_server.conf` / `observer.conf` / `kiss_modem.conf`)
 - **Radio**: `ZEPHCORE_RADIO_NATIVE` (SX126x, default) vs `ZEPHCORE_RADIO_LR1110` vs `ZEPHCORE_RADIO_LR2021` vs `ZEPHCORE_RADIO_SX127X`
 - **Features**: Display, buzzer, buttons, multi-tap, Doom (auto-enabled from DT); PSRAM auto-enable from DT (`Kconfig.psram`)
 
@@ -1226,21 +1247,21 @@ Codes `0x80`–`0x90` (`PUSH_CODE_*` in `app/CompanionMesh.h`). Most used:
 | `/lfs/contacts3` or `/ext/contacts3` | Contacts | 152B × N records |
 | `/lfs/channels2` or `/ext/channels2` | Channels | 68B × N records |
 | `/lfs/adv_blobs` or `/ext/adv_blobs` | Advert cache | Fixed-size blob records |
-| `/lfs/repeater/_main.id`, `prefs.json` | Repeater/room-server/observer identity + prefs | `prefs.json` as above; legacy 311B `prefs` kept after migration; atomic-replace writes |
+| `/lfs/repeater/_main.id`, `prefs.json` | Repeater/room-server/observer identity + prefs (KISS modem: identity only) | `prefs.json` as above; legacy 311B `prefs` kept after migration; atomic-replace writes |
 | `/lfs/repeater/acl` | Client ACL | 136B × N records |
 | `/lfs/repeater/regions2` | Region map | Header + 164B × N entries |
 | `storage_partition` (NVS, 0xD0000 nRF52) | BLE bonds + Zephyr settings | NVS settings backend (≥1.16.2; old `/lfs/settings` file detected by self-heal) |
 
 > **Roles are not interchangeable.** Each role formats the whole volume on its first boot if the
 > volume holds no data for that role: the companion checks `/lfs/prefs.json` and `/lfs/new_prefs`
-> (`ZephyrDataStore::hasPrefs()`), the repeater/room-server/observer check `/lfs/repeater/prefs.json`,
+> (`ZephyrDataStore::hasPrefs()`), the repeater/room-server/observer/KISS modem check `/lfs/repeater/prefs.json`,
 > `/lfs/repeater/prefs` and `/lfs/repeater/_main.id` (`RepeaterDataStore::hasRoleData()`). So flashing a repeater over
 > a companion — or the reverse — erases the previous role's identity, prefs and contacts, plus
 > `storage_partition` and QSPI. Export your identity before switching roles. The roles' files
 > never overlap physically (one LittleFS volume, one allocator); the reason for the wipe is that
 > they share 128 KB and the other role's data crowds out writes. Repeater, room server and
 > observer share `/lfs/repeater/` and the same prefs layout, so switching among *those three*
-> preserves the identity.
+> (or to the KISS modem, which keeps only the identity there) preserves the identity.
 
 ### Preferences (`prefs.json`)
 

@@ -105,6 +105,8 @@ foreach(_c IN LISTS ZEPHCORE_USER_CONFS)
 endforeach()
 if("observer" IN_LIST _user_conf_names OR CONFIG_ZEPHCORE_ROLE_OBSERVER)
     set(ZEPHCORE_BUILD_ROLE observer)
+elseif("kiss_modem" IN_LIST _user_conf_names OR CONFIG_ZEPHCORE_ROLE_KISS_MODEM)
+    set(ZEPHCORE_BUILD_ROLE kiss_modem)
 elseif("room_server" IN_LIST _user_conf_names OR CONFIG_ZEPHCORE_ROLE_ROOM_SERVER)
     set(ZEPHCORE_BUILD_ROLE room_server)
 elseif("repeater" IN_LIST _user_conf_names OR CONFIG_ZEPHCORE_ROLE_REPEATER)
@@ -302,7 +304,7 @@ project(zephcore)
 # wrong role (e.g. the ESP32 USB companion transport in a server build, which
 # strands the serial CLI). Pass the role via boards/common/<role>.conf.
 set(_kconfig_role companion)
-foreach(_r repeater room_server observer)
+foreach(_r repeater room_server observer kiss_modem)
     string(TOUPPER "${_r}" _R)
     if(CONFIG_ZEPHCORE_ROLE_${_R})
         set(_kconfig_role ${_r})
@@ -604,6 +606,21 @@ elseif(CONFIG_ZEPHCORE_ROLE_OBSERVER)
     ${CMAKE_CURRENT_SOURCE_DIR}/app
   )
   target_compile_definitions(app PRIVATE ZEPHCORE_OBSERVER=1)
+elseif(CONFIG_ZEPHCORE_ROLE_KISS_MODEM)
+  message(STATUS "ZephCore Role: KISS MODEM")
+  target_sources(app PRIVATE
+    src/main_kiss_modem.cpp
+    app/KissModem.cpp
+    app/RepeaterDataStore.cpp
+    adapters/transport/ZephyrUartStream.cpp
+  )
+  # USBD CDC ACM init + 1200-baud DFU, where the board has the class driver.
+  if(NOT CONFIG_CDC_ACM_SERIAL_INITIALIZE_AT_BOOT AND (CONFIG_USB_CDC_ACM OR CONFIG_USBD_CDC_ACM_CLASS))
+    target_sources(app PRIVATE adapters/usb/ZephyrUSBCDC.cpp)
+  endif()
+  target_include_directories(app PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/adapters/usb
+  )
 else()
   message(STATUS "ZephCore Role: COMPANION")
   target_sources(app PRIVATE
@@ -720,8 +737,8 @@ if(CONFIG_ZEPHCORE_UI_BUTTONS OR CONFIG_ZEPHCORE_UI_BUZZER OR CONFIG_ZEPHCORE_UI
   target_include_directories(app PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/helpers/ui
   )
-  # Repeater and Observer builds need weak stubs for companion-only UI mesh actions
-  if(CONFIG_ZEPHCORE_ROLE_REPEATER OR CONFIG_ZEPHCORE_ROLE_OBSERVER OR CONFIG_ZEPHCORE_ROLE_ROOM_SERVER)
+  # Every other role needs weak stubs for the companion-only UI mesh actions
+  if(NOT CONFIG_ZEPHCORE_ROLE_COMPANION)
     target_sources(app PRIVATE
       helpers/ui/ui_mesh_actions_stubs.c
     )

@@ -161,6 +161,14 @@ config ZEPHCORE_ROLE_ROOM_SERVER
 	  per-client sync cursor.  No BLE — configured via USB serial CLI.
 	  Reuses the repeater's ACL, region filtering and CLI command set.
 
+config ZEPHCORE_ROLE_KISS_MODEM
+	bool "KISS modem (raw LoRa packets to a host over serial)"
+	help
+	  KISS TNC on the USB/console serial port, as upstream MeshCore's
+	  kiss_modem: the host sends and receives raw packets, configures
+	  the radio and uses the node identity through the SetHardware
+	  extensions (docs/kiss_modem_protocol.md). No mesh, no BLE, no CLI.
+
 endchoice
 
 config ZEPHCORE_COMPANION_USB
