@@ -14,6 +14,8 @@
 #include <stdbool.h>
 #include <stdint.h>
 
+struct k_event;
+
 #ifdef __cplusplus
 extern "C" {
 #endif

@@ -52,6 +52,27 @@ config GNSS_LUATOS_AIR530Z_NAV_MODE
 	default ZEPHCORE_GPS_NAV_MODE
 	depends on GNSS_LUATOS_AIR530Z
 
+# Defaults rather than conf-file assignments for symbols that exist only on some
+# builds: an assignment to an invisible symbol is a Kconfig warning on every
+# other build. Ahead of Kconfig.zephyr so they beat the upstream defaults. Each
+# repeats the upstream `depends on`: a definition without it would make the
+# symbol exist on every build (Kconfig ORs the dependencies of all definitions).
+# USB device stack at WRN when logging is on: INF logs every CH9 control transfer.
+choice USBD_LOG_LEVEL_CHOICE
+	default USBD_LOG_LEVEL_WRN
+endchoice
+
+# QSPI NOR boards: 4 KB sector erase instead of the 64 KB block default, which
+# suits LittleFS on small partitions.
+config NORDIC_QSPI_NOR_FLASH_LAYOUT_PAGE_SIZE
+	depends on NORDIC_QSPI_NOR
+	default 4096
+
+# Power-off wherever the SoC supports it (not on MG24).
+config POWEROFF
+	depends on HAS_POWEROFF
+	default y
+
 source "$(ZEPHYR_BASE)/Kconfig.zephyr"
 
 # DT-driven PSRAM auto-enable for ESP32 boards (see Kconfig.psram).
