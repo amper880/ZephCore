@@ -92,7 +92,7 @@ Thanks to **recrof** for the port.
 - **Acknowledgements on direct routes are relayed after a short random delay**, like other direct
   packets, and with `multi.acks 1` the two copies go out 300 ms apart. This means fewer lost
   acknowledgements.
-- **Floods with transport code 0 are treated as un-scoped.** Unlike upstream, ZephCore applies your
-  `flood.max.unscoped` and `region denyf *` settings to them.
+- **Floods with transport code 0 are un-scoped**, as in upstream 1.18.0. Unlike upstream, ZephCore
+  also applies your `flood.max.unscoped` and `region denyf *` settings to them. (because I don't really get it what is this transport code for, yet)
 - **Room server:** `set repeat on` now answers `ERR - repeat now deprecated`. A room server never
-  forwarded packets anyway.
+  forwarded packets by default anyway.
