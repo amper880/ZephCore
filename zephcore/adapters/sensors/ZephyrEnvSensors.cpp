@@ -54,8 +54,9 @@ static struct sensor_entry s_sensors[MAX_SENSORS];
 static uint8_t s_count;
 
 /* Is this sensor usable? A node marked zephyr,deferred-init (a part behind a
- * switched rail) is initialised here first. For any other device
- * device_init() answers -EALREADY and this is a device_is_ready() check. */
+ * switched rail) is initialised here first. A device whose boot-time init
+ * failed (an absent part) has its init run once more here; one that came up
+ * answers -EALREADY, so this is a device_is_ready() check. */
 static bool sensor_ready(const struct device *dev)
 {
 	if (dev == NULL) {

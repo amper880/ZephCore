@@ -18,17 +18,20 @@
  *   entry (IRQs locked): save the pin's interrupt type and enable, mask its CPU
  *     interrupt, arm a level wake at the pin's active level, keep the pad's
  *     input live through the sleep (sleep-select off).
- *   exit (IRQs already back on, power.c post_ops): disarm, restore the saved
- *     type, clear the status the level mode latched, unmask, and if the pin
- *     is at its active level, re-raise its interrupt through status_w1ts.
+ *   exit (IRQs still locked; the idle thread unlocks them after the kernel
+ *     clock is corrected): disarm, restore the saved type, clear the status
+ *     the level mode latched, unmask, and if the pin is at its active level,
+ *     re-raise its interrupt through status_w1ts.
  *
- * The CPU interrupt stays masked while the pin is in level mode because on
- * this SoC the exit notifiers run after interrupts are re-enabled: a level
- * interrupt on a line the radio holds high until ClearIrqStatus would storm.
- * The re-raise is the missed edge: the level that woke us was reached while
- * the pin was in level mode, so no edge will come. The driver's own ISR then
- * runs the normal callbacks (the radio's dio1_isr, gpio-keys). A duplicate is
- * harmless: both only queue work that re-reads the hardware.
+ * The pin's interrupt stays masked while it is in level mode: a level
+ * interrupt on a line the radio holds high until ClearIrqStatus would storm
+ * if interrupts ran before the type is restored. Since the 2026-10-22 Zephyr
+ * pin they do not (LLD 13 section 14); the mask keeps that true on a Zephyr
+ * version whose post_ops re-enables them. The re-raise is the missed edge: the level that
+ * woke us was reached while the pin was in level mode, so no edge will come.
+ * The driver's own ISR then runs the normal callbacks (the radio's dio1_isr,
+ * gpio-keys) once interrupts are unlocked. A duplicate is harmless: both only
+ * queue work that re-reads the hardware.
  *
  * The ESP32 GPIO wake source itself (ESP_SLEEP_WAKEUP_GPIO) is switched on by
  * `&gpio0 { wakeup-source; }` in boards/common/pm_esp32.overlay.

@@ -319,8 +319,8 @@
 	 * DRV2605_POWER_UP_DELAY_US *before* drv2605_gpio_config() raises en-gpios,
 	 * then reads the status register over I2C immediately after — so the part
 	 * gets no settling time at all between EN rising and being addressed, and
-	 * NACKs. Without the deferral the driver has already run (and failed) by
-	 * the time the app gets a say, and device_init() would answer -EALREADY. */
+	 * NACKs. Without the deferral the driver has already run (and failed) at
+	 * boot, before the app could raise EN and wait. */
 	haptic: drv2605@5a {
 		compatible = "ti,drv2605";
 		reg = <0x5a>;

@@ -67,10 +67,12 @@ static int qspi_rdid_probe(void)
 		return 0;
 	}
 
-	if (!flash->state->initialized) {
-		/* qspi-ext.dtsi defers the flash to first use, and a repeater
-		 * never mounts /ext. Stealing the pins now would break the init
-		 * a later factory reset runs, so there is nothing to probe. */
+	if (!flash->state->initialized && flash->state->init_res == 0) {
+		/* Init never ran: qspi-ext.dtsi defers the flash to first use,
+		 * and a repeater never mounts /ext. Stealing the pins now would
+		 * break the init a later factory reset runs, so there is nothing
+		 * to probe. A failed init leaves initialized clear too, with the
+		 * errno in init_res (kernel/device.c). */
 		LOG_INF("qspi flash '%s' not initialised yet - RDID probe skipped",
 			flash->name);
 		return 0;
