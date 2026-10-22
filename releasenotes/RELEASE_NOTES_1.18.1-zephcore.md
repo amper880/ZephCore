@@ -24,6 +24,10 @@ becomes 5).
 
 ## Other changes
 
+- **`set leds.hb off` and `hb` now also stop the message blink.** Before, a node with the heartbeat
+  LED off still flashed on every DM and channel message. `set leds on` with `set leds.hb off` now keeps
+  a T1000-E dark in use while it still blinks three times when you switch it off with the buzzer muted;
+  `set leds off` keeps it dark at power-off too.
 - **Zephyr** updated to `b70dbaf045e`. A GPS receiver that fails to start on the first try is now
   really tried again (the two retries did nothing before), and on boards with external flash a
   failed start of that flash is retried at the next mount instead of staying failed until reboot.

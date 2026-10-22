@@ -303,11 +303,15 @@ void ui_set_leds_disabled(bool disabled)
 /* Flash the heartbeat LED immediately on message receipt.
  * Cancels the current cycle, pulses at LED_ON_MSG_MS width, then the
  * work chain resumes the normal heartbeat automatically.
- * No-op when LEDs are disabled or hardware is absent. */
+ * No-op when LEDs are disabled, when leds.hb is "hb" or "off" (the modes
+ * that never show message activity), or when hardware is absent. */
 void ui_led_flash_msg(void)
 {
 #if HAS_ANY_HEARTBEAT_LED
-	if (!zephcore_leds_disabled() && heartbeat_led_is_ready()) {
+	uint8_t hb = zephcore_leds_hb_mode();
+
+	if (!zephcore_leds_disabled() && heartbeat_led_is_ready() &&
+	    (hb == LEDS_HB_ALL || hb == LEDS_HB_UNREAD)) {
 		k_work_cancel_delayable(&s_led_on_work);
 		k_work_cancel_delayable(&s_led_off_work);
 		heartbeat_led_write(true);
