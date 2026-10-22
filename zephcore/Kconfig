@@ -461,6 +461,7 @@ menu "Companion TCP Transport"
 config ZEPHCORE_TRANSPORT_TCP
 	bool "Companion over a TCP socket"
 	default n
+	select NET_CONTEXT_SNDTIMEO
 	help
 	  Serve the companion protocol over TCP (TcpCompanionTransport), as one
 	  more interface in the MultiSerialInterface beside BLE and USB: the

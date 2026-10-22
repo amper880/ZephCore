@@ -24,6 +24,10 @@ becomes 5).
 
 ## Other changes
 
+- **WiFi companions no longer freeze when the app stops reading.** If an app connected over WiFi
+  stopped reading (for example in the middle of a contact sync), the node could stop answering on
+  USB, Bluetooth and WiFi, and stay stuck as long as that connection stayed open. The node now
+  drops such a connection after 2 seconds, and the app can reconnect.
 - **`set leds.hb off` and `hb` now also stop the message blink.** Before, a node with the heartbeat
   LED off still flashed on every DM and channel message. `set leds on` with `set leds.hb off` now keeps
   a T1000-E dark in use while it still blinks three times when you switch it off with the buzzer muted;
