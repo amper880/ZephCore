@@ -195,3 +195,24 @@ TEST(pjson_server_gps_upgrade, "UNIT-PJSON-008", "Server gps.en: a file without 
     CHECK(companionPrefsFromJson(c, comp));
     CHECK(c.gps_enabled == 0);
 }
+
+TEST(pjson_tz_fraction, "UNIT-PJSON-009", "A quarter-hour timezone survives prefs.json; upstream's float tz_offset loads") {
+    NodePrefs p = sample();
+    p.tz_offset = 5.75f;
+    MemStream s;
+    CHECK(companionPrefsToJson(p, s));
+    NodePrefs q = defaults();
+    CHECK(companionPrefsFromJson(q, s));
+    CHECK(q.tz_offset == 5.75f);
+    p.tz_offset = -9.5f;
+    MemStream t;
+    CHECK(serverPrefsToJson(p, t));
+    q = defaults();
+    CHECK(serverPrefsFromJson(q, t));
+    CHECK(q.tz_offset == -9.5f);
+    // Upstream v1.18+ writes the float with four decimals.
+    MemStream u("{comp:{tz_offset:5.5000}}");
+    q = defaults();
+    CHECK(companionPrefsFromJson(q, u));
+    CHECK(q.tz_offset == 5.5f);
+}

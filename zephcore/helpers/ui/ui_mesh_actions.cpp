@@ -352,7 +352,7 @@ extern "C" void mesh_housekeeping_ui_refresh(void)
 	 * display offset is a separate push so nothing downstream is tempted to
 	 * bake a timezone into a timestamp (see NodePrefs::tz_offset). */
 	ui_set_clock(s_rtc_clock->getCurrentTime());
-	ui_set_tz(s_mesh->prefs.tz_offset);
+	ui_set_tz(tz_offset_minutes(s_mesh->prefs.tz_offset));
 
 	ui_push_radio_state(*s_lora_radio);
 	/* The app and the CLI change it too. */

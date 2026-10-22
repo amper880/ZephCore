@@ -29,9 +29,13 @@ const Field kCompanion[] = {
     F(153, v_battery_alert_mv), F(155, cad_auto), F(156, cad_offset), F(157, probe_interval),
     F(158, cad_busycap), F(159, adc_multiplier), F(163, extra_sf), F(166, v_contact_flags),
     F(167, fem_rxgain), F(168, display_rotate), F(169, input_rotate), F(170, cad_base),
-    F(171, tz_offset), F(172, leds_radio_mode), F(173, leds_hb_mode), F(174, wifi_enabled),
+    F(172, leds_radio_mode), F(173, leds_hb_mode), F(174, wifi_enabled),
     F(175, wifi_ssid), F(208, wifi_pwd),
 };
+// tz_offset is float hours in NodePrefs but one signed whole-hours byte in
+// both files, so it is checked by value, not by the byte table.
+const size_t kCompanionTz = 171;
+const size_t kServerTz = 308;
 
 // Server /lfs/repeater/prefs, 311 bytes. Offset 120 is leds_disabled as a
 // magic byte (checked separately); pads at 36-39, 79, 123, 127-151 (bridge),
@@ -49,7 +53,7 @@ const Field kServer[] = {
     F(292, _reserved_apc_enabled), F(293, _reserved_apc_margin), F(294, flood_max_unscoped),
     F(295, flood_max_advert), F(296, meshtimesync), F(297, cad_auto), F(298, cad_offset),
     F(299, probe_interval), F(300, cad_busycap), F(301, extra_sf), F(304, fem_rxgain),
-    F(305, display_rotate), F(306, input_rotate), F(307, cad_base), F(308, tz_offset),
+    F(305, display_rotate), F(306, input_rotate), F(307, cad_base),
     F(309, leds_radio_mode), F(310, leds_hb_mode),
 };
 #undef F
@@ -131,6 +135,7 @@ TEST(prefs_companion_layout, "UNIT-PREFS-001", "Companion prefs encode to the do
     std::memset(buf, 0xEE, sizeof(buf));
     CHECK(companionPrefsEncode(p, buf, sizeof(buf)) == COMPANION_PREFS_SIZE);
     checkLayout(buf, p, kCompanion);
+    CHECK((int8_t)buf[kCompanionTz] == -5);
     CHECK(zeros(buf, 36, 40));
     CHECK(buf[79] == 0);
     CHECK(buf[COMPANION_PREFS_SIZE] == 0xEE);
@@ -159,6 +164,7 @@ TEST(prefs_companion_short, "UNIT-PREFS-003", "Short companion files keep the ca
         NodePrefs got = defaults();
         CHECK(companionPrefsDecode(got, full, len));
         NodePrefs want = expectShort(p, len, kCompanion);
+        if (len > kCompanionTz) want.tz_offset = p.tz_offset;
         uint8_t g[COMPANION_PREFS_SIZE], w[COMPANION_PREFS_SIZE];
         companionPrefsEncode(got, g, sizeof(g));
         companionPrefsEncode(want, w, sizeof(w));
@@ -221,6 +227,7 @@ TEST(prefs_server_layout, "UNIT-PREFS-006", "Server prefs encode to the document
     std::memset(buf, 0xEE, sizeof(buf));
     CHECK(serverPrefsEncode(p, buf, sizeof(buf)) == SERVER_PREFS_SIZE);
     checkLayout(buf, p, kServer);
+    CHECK((int8_t)buf[kServerTz] == -5);
     CHECK(buf[120] == LEDS_PREF_OFF);
     CHECK(zeros(buf, 36, 40));
     CHECK(buf[79] == 0 && buf[123] == 0);
@@ -254,6 +261,7 @@ TEST(prefs_server_short, "UNIT-PREFS-008", "Short server files keep the caller's
         serverPrefsDecode(got, full, len);
         NodePrefs want = expectShort(p, len, kServer);
         want.leds_disabled = p.leds_disabled;  // offset 120, inside every length
+        if (len > kServerTz) want.tz_offset = p.tz_offset;
         uint8_t g[SERVER_PREFS_SIZE], w[SERVER_PREFS_SIZE];
         serverPrefsEncode(got, g, sizeof(g));
         serverPrefsEncode(want, w, sizeof(w));
@@ -296,4 +304,56 @@ TEST(prefs_gps_interval, "UNIT-PREFS-010", "GPS interval: one clamp, and a corru
     p.gps_interval = 0xFFFFFFFFu;                         // garbage in a prefs file
     sanitizeNodePrefs(&p);
     CHECK(p.gps_interval == GPS_INTERVAL_MAX_SEC);
+}
+
+TEST(prefs_tz_quarter_hours, "UNIT-PREFS-011", "Timezone offset: quarter hours accepted, anything else snapped or reset to UTC") {
+    CHECK(tz_offset_valid(0.0f) && tz_offset_valid(5.5f) && tz_offset_valid(5.75f));
+    CHECK(tz_offset_valid(-3.5f) && tz_offset_valid(-12.0f) && tz_offset_valid(14.0f));
+    CHECK(tz_offset_valid(12.75f) && tz_offset_valid(-9.5f));
+    CHECK(!tz_offset_valid(5.3f) && !tz_offset_valid(5.249f) && !tz_offset_valid(-0.1f));
+    CHECK(!tz_offset_valid(-12.25f) && !tz_offset_valid(14.25f) && !tz_offset_valid(NAN));
+    CHECK(tz_offset_sanitize(5.3f) == 5.25f);
+    CHECK(tz_offset_sanitize(-3.4f) == -3.5f);
+    CHECK(tz_offset_sanitize(15.0f) == 0.0f && tz_offset_sanitize(-13.0f) == 0.0f);
+    CHECK(tz_offset_sanitize(NAN) == 0.0f);
+    CHECK(tz_offset_minutes(5.75f) == 345 && tz_offset_minutes(-3.5f) == -210);
+    CHECK(tz_offset_minutes(14.0f) == 840 && tz_offset_minutes(-12.0f) == -720);
+    NodePrefs p; initNodePrefs(&p);
+    CHECK(p.tz_offset == 0.0f);
+    p.tz_offset = NAN;
+    sanitizeNodePrefs(&p);
+    CHECK(p.tz_offset == 0.0f);
+    p.tz_offset = 9.6f;
+    sanitizeNodePrefs(&p);
+    CHECK(p.tz_offset == 9.5f);
+    // The binary layouts hold whole hours: a fractional offset truncates toward zero.
+    p = sample();
+    p.tz_offset = -9.5f;
+    uint8_t c[COMPANION_PREFS_SIZE], s[SERVER_PREFS_SIZE];
+    companionPrefsEncode(p, c, sizeof(c));
+    serverPrefsEncode(p, s, sizeof(s));
+    CHECK((int8_t)c[kCompanionTz] == -9 && (int8_t)s[kServerTz] == -9);
+    NodePrefs q = defaults();
+    CHECK(companionPrefsDecode(q, c, sizeof(c)));
+    CHECK(q.tz_offset == -9.0f);
+    q = defaults();
+    serverPrefsDecode(q, s, sizeof(s));
+    CHECK(q.tz_offset == -9.0f);
+}
+
+TEST(prefs_tz_text, "UNIT-PREFS-012", "Timezone offset text: exact decimal hours and an 8-character clock label") {
+    struct { int16_t min; const char *hours; const char *label; } cases[] = {
+        { 0, "0.0", "UTC" },          { 120, "2.0", "UTC+2" },       { -300, "-5.0", "UTC-5" },
+        { 330, "5.5", "UTC+5:30" },   { 345, "5.75", "UTC+5:45" },   { -210, "-3.5", "UTC-3:30" },
+        { -30, "-0.5", "UTC-0:30" },  { 765, "12.75", "UTC+1245" },  { 630, "10.5", "UTC+1030" },
+        { 840, "14.0", "UTC+14" },    { -720, "-12.0", "UTC-12" },   { 525, "8.75", "UTC+8:45" },
+    };
+    for (const auto &t : cases) {
+        char h[TZ_OFFSET_TEXT_LEN], l[TZ_OFFSET_TEXT_LEN];
+        tz_offset_format_hours(t.min, h, sizeof(h));
+        tz_offset_format_label(t.min, l, sizeof(l));
+        if (std::strcmp(h, t.hours) != 0 || std::strcmp(l, t.label) != 0)
+            throw std::runtime_error(std::to_string(t.min) + " -> " + h + " / " + l);
+        CHECK(std::strlen(l) <= 8);
+    }
 }

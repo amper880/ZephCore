@@ -118,6 +118,7 @@ zephcore/
 │   ├── RegionMap.cpp/h           # Region-based flood filtering
 │   ├── ContactInfo.h, ChannelDetails.h, NodePrefs.h  # Data structures
 │   ├── RateLimiter.h, IdentityStore.h, StatsFormatHelper.h
+│   ├── tz_offset.h               # Display timezone: quarter-hour checks, minutes, CLI/UI text (C and C++)
 │   ├── battery_curve.c/h, fatal_reboot.c, oled_power.c/h
 │   ├── ui/                       # Shared UI plumbing: display, buzzer, multi-tap input, Doom
 │   ├── ui-button/                # Single-button page UI (pages, task)

@@ -563,6 +563,10 @@ static void server_event_loop(void)
 
 #if ZEPHCORE_HAS_UI
 			ui_set_clock(rtc_clock.getCurrentTime());
+			/* Display offset only; the epoch above stays UTC. */
+			if (server_role) {
+				ui_set_tz(tz_offset_minutes(server_role->prefs->tz_offset));
+			}
 
 #ifdef ZEPHCORE_LORA
 			/* Refresh live radio state (noise floor, TX power

@@ -17,6 +17,9 @@ struct Wr {
 	size_t off;
 	void put(const void *src, size_t n) { memcpy(b + off, src, n); off += n; }
 	void zeros(size_t n) { memset(b + off, 0, n); off += n; }
+	/* tz_offset: both layouts hold signed whole hours in one byte, so a
+	 * fractional offset is truncated toward zero. */
+	void tz(float hours) { int8_t v = (int8_t)tz_offset_sanitize(hours); put(&v, 1); }
 };
 
 struct Rd {
@@ -35,6 +38,13 @@ struct Rd {
 			memcpy(dst, b + off, n);
 		}
 		off += n;
+	}
+	/* The one-byte whole-hours tz_offset into the float field. */
+	void tz(float &hours) {
+		if (off < len) {
+			hours = (int8_t)b[off];
+		}
+		off += 1;
 	}
 };
 
@@ -103,7 +113,7 @@ size_t companionPrefsEncode(const NodePrefs &p, uint8_t *buf, size_t cap)
 	w.put(&p.display_rotate, 1);
 	w.put(&p.input_rotate, 1);
 	w.put(&p.cad_base, 1);
-	w.put(&p.tz_offset, 1);
+	w.tz(p.tz_offset);
 	w.put(&p.leds_radio_mode, 1);
 	w.put(&p.leds_hb_mode, 1);
 	w.put(&p.wifi_enabled, 1);
@@ -184,7 +194,7 @@ bool companionPrefsDecode(NodePrefs &prefs, const uint8_t *buf, size_t len)
 	/* cad_base 0 = "no base recorded": setCadParams() then leaves the stored
 	 * offset alone. */
 	r.take(&p.cad_base, 1);
-	r.take(&p.tz_offset, 1);
+	r.tz(p.tz_offset);
 	r.take(&p.leds_radio_mode, 1);
 	r.take(&p.leds_hb_mode, 1);
 	r.take(&p.wifi_enabled, 1);
@@ -276,7 +286,7 @@ size_t serverPrefsEncode(const NodePrefs &prefs, uint8_t *buf, size_t cap)
 	w.put(&prefs.cad_base, sizeof(prefs.cad_base));
 	/* Display timezone offset (offset 308) — signed whole hours from UTC,
 	 * applied only when formatting the on-device clock */
-	w.put(&prefs.tz_offset, sizeof(prefs.tz_offset));
+	w.tz(prefs.tz_offset);
 	/* LED activity/heartbeat modes (offsets 309-310) */
 	w.put(&prefs.leds_radio_mode, sizeof(prefs.leds_radio_mode));
 	w.put(&prefs.leds_hb_mode, sizeof(prefs.leds_hb_mode));
@@ -352,7 +362,7 @@ void serverPrefsDecode(NodePrefs &prefs, const uint8_t *buf, size_t len)
 	 * offset alone, since a node upgrading across a table change cannot know
 	 * which base its offset came from. */
 	r.get(&prefs.cad_base, sizeof(prefs.cad_base));
-	r.get(&prefs.tz_offset, sizeof(prefs.tz_offset));
+	r.tz(prefs.tz_offset);
 	r.get(&prefs.leds_radio_mode, sizeof(prefs.leds_radio_mode));
 	r.get(&prefs.leds_hb_mode, sizeof(prefs.leds_hb_mode));
 

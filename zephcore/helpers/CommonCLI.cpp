@@ -1125,7 +1125,9 @@ void CommonCLI::handleGetCmd(uint32_t sender_timestamp, const char* command, cha
 	} else if (memcmp(config, "input.rotate", 12) == 0) {
 		snprintf(reply, CLI_REPLY_SIZE, "> %d", zephcore_input_is_flipped() ? 1 : 0);
 	} else if (memcmp(config, "tz.offset", 9) == 0) {
-		snprintf(reply, CLI_REPLY_SIZE, "> %d", (int)_prefs->tz_offset);
+		char hours[TZ_OFFSET_TEXT_LEN];
+		tz_offset_format_hours(tz_offset_minutes(_prefs->tz_offset), hours, sizeof(hours));
+		snprintf(reply, CLI_REPLY_SIZE, "> %s", hours);
 	} else if (memcmp(config, "gps diag", 8) == 0) {
 		/* What the last module-configuration attempt actually did.
 		 * Self-limits on the remote path like cad.stats/meshtimesync:
@@ -1714,19 +1716,23 @@ void CommonCLI::handleSetCmd(uint32_t sender_timestamp, const char* command, cha
 			strcpy(reply, "Error: must be 0, 1, on, or off");
 		}
 	} else if (memcmp(config, "tz.offset ", 10) == 0) {
-		// Whole-hour offset from UTC for the on-device clock display only; the RTC,
-		// `clock` and `time <epoch>` stay UTC. Whole hours as upstream.
-		long val;
-		if (!cliNum(&config[10], cliDefaults()->tz_offset, &val)) {
+		// Hours from UTC in quarter-hour steps, for the on-device clock display
+		// only; the RTC, `clock` and `time <epoch>` stay UTC.
+		float val;
+		if (!cliFloat(&config[10], cliDefaults()->tz_offset, &val)) {
 			snprintf(reply, CLI_REPLY_SIZE, "Error: expected %d..%d or default",
 				 TZ_OFFSET_MIN, TZ_OFFSET_MAX);
 		} else if (val < TZ_OFFSET_MIN || val > TZ_OFFSET_MAX) {
 			snprintf(reply, CLI_REPLY_SIZE, "Error: offset range is %d..%d",
 				 TZ_OFFSET_MIN, TZ_OFFSET_MAX);
+		} else if (!tz_offset_valid(val)) {
+			strcpy(reply, "Error: offset must be whole quarter hours (e.g. 5.5, 5.75)");
 		} else {
-			_prefs->tz_offset = (int8_t)val;
+			char hours[TZ_OFFSET_TEXT_LEN];
+			_prefs->tz_offset = tz_offset_sanitize(val);
 			savePrefs();
-			snprintf(reply, CLI_REPLY_SIZE, "OK - tz.offset=%d", (int)val);
+			tz_offset_format_hours(tz_offset_minutes(_prefs->tz_offset), hours, sizeof(hours));
+			snprintf(reply, CLI_REPLY_SIZE, "OK - tz.offset=%s", hours);
 		}
 	} else if (memcmp(config, "gps diag", 8) == 0) {
 		// set gps diag <0|1|on|off> — arm module-configuration reporting.

@@ -119,13 +119,14 @@ void ui_set_battery(uint16_t mv, uint8_t pct);
 void ui_set_clock(uint32_t epoch);
 
 /**
- * Set the whole-hour offset from UTC used when formatting the on-device
- * clock.  Display only: the epoch handed to ui_set_clock() stays UTC, and
- * nothing here may ever reach RTCClock or a packet timestamp.
+ * Set the offset from UTC used when formatting the on-device clock.  Display
+ * only: the epoch handed to ui_set_clock() stays UTC, and nothing here may
+ * ever reach RTCClock or a packet timestamp.
  *
- * @param hours  Offset from UTC, TZ_OFFSET_MIN..TZ_OFFSET_MAX (0 = UTC)
+ * @param minutes  Offset from UTC in minutes, a multiple of 15 within
+ *                 TZ_OFFSET_MIN..TZ_OFFSET_MAX hours (0 = UTC)
  */
-void ui_set_tz(int8_t hours);
+void ui_set_tz(int16_t minutes);
 
 /**
  * Record a recently heard contact for the "recent" page.

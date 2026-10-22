@@ -308,6 +308,11 @@
       "source": "tests/unit/prefs_json_tests.cpp"
     },
     {
+      "id": "UNIT-PJSON-009",
+      "name": "A quarter-hour timezone survives prefs.json; upstream's float tz_offset loads",
+      "source": "tests/unit/prefs_json_tests.cpp"
+    },
+    {
       "id": "UNIT-LPP-001",
       "name": "Values round to the nearest step (3850 mV is 3.85 V, not the library's 3.84)",
       "source": "tests/unit/lpp_tests.cpp"
@@ -440,6 +445,16 @@
     {
       "id": "UNIT-PREFS-010",
       "name": "GPS interval: one clamp, and a corrupt value is not turned into always-on",
+      "source": "tests/unit/prefs_codec_tests.cpp"
+    },
+    {
+      "id": "UNIT-PREFS-011",
+      "name": "Timezone offset: quarter hours accepted, anything else snapped or reset to UTC",
+      "source": "tests/unit/prefs_codec_tests.cpp"
+    },
+    {
+      "id": "UNIT-PREFS-012",
+      "name": "Timezone offset text: exact decimal hours and an 8-character clock label",
       "source": "tests/unit/prefs_codec_tests.cpp"
     },
     {

@@ -19,6 +19,7 @@
 #include "ui_mesh_actions.h"
 #include "display.h"
 #include <helpers/buzzer_gate.h>
+#include <helpers/tz_offset.h>
 
 #include <time_sync.h>
 #include <ZephyrGPSManager.h>
@@ -200,19 +201,17 @@ static int current_page_idx;
  * silent mesh-wide mute.  Never write these values back into state. */
 static uint32_t local_epoch(void)
 {
-	return state.rtc_epoch + (int32_t)state.tz_offset * 3600;
+	return state.rtc_epoch + (int32_t)state.tz_offset_min * 60;
 }
 
-/* The zone the displayed digits are actually in: "UTC", "UTC+2", "UTC-11".
+/* The zone the displayed digits are actually in: "UTC", "UTC+2", "UTC-3:30",
+ * at most 8 characters (tz_offset_format_label()).
  * Static buffer -- every caller is on the UI thread inside ui_pages_render(). */
 static const char *tz_label(void)
 {
-	static char label[8];
+	static char label[TZ_OFFSET_TEXT_LEN];
 
-	if (state.tz_offset == 0) {
-		return "UTC";
-	}
-	snprintf(label, sizeof(label), "UTC%+d", (int)state.tz_offset);
+	tz_offset_format_label(state.tz_offset_min, label, sizeof(label));
 	return label;
 }
 
@@ -1713,8 +1712,8 @@ static void render_status(void)
 		uint8_t mm = (day_sec % 3600) / 60;
 		uint8_t ss = day_sec % 60;
 
-		/* "T:" rather than "Time:" so a two-digit zone still fits the
-		 * 20-column budget of the 200x200 e-paper boards, which pair
+		/* "T:" rather than "Time:" so an 8-character zone label still fits
+		 * the 20-column budget of the 200x200 e-paper boards, which pair
 		 * CONFIG_ZEPHCORE_DISPLAY_LARGE_FONT (10x16) with this page. */
 		snprintf(buf, sizeof(buf), "T: %02u:%02u:%02u %s", hh, mm, ss,
 			 tz_label());

@@ -260,7 +260,7 @@ extern "C" void ui_set_ble_enabled(bool enabled)
 extern "C" void ui_set_gps_data(bool, uint8_t, int32_t, int32_t, int32_t) {}
 extern "C" void ui_set_clock(uint32_t) {}
 /* The joystick UI reads tz_offset straight off NodePrefs at render time. */
-extern "C" void ui_set_tz(int8_t) {}
+extern "C" void ui_set_tz(int16_t) {}
 extern "C" void ui_add_recent(const char *, int16_t, uint32_t) {}
 extern "C" void ui_set_node_name(const char *) {}
 extern "C" void ui_clear_recent(void) {}

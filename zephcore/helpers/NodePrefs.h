@@ -17,6 +17,9 @@
  * and this header is C++; see the note there. */
 #include "led_gate.h"
 
+/* TZ_OFFSET_MIN / TZ_OFFSET_MAX and the quarter-hour helpers for tz_offset. */
+#include "tz_offset.h"
+
 /* ── Accepted radio parameter ranges ──
  * One definition for everything that accepts or validates a radio preset
  * (CLIs, the companion protocol, the load-time checks): a setter must never
@@ -61,11 +64,6 @@
 /* Number of LR2021 side-detector slots stored in prefs.  Matches the chip's
  * ConfigureSideDetectors limit of 3. */
 #define EXTRA_SF_MAX    3
-
-/* Display timezone offset range, whole hours from UTC.  Matches upstream
- * MeshCore's `set tz.offset` so the same command works against both trees. */
-#define TZ_OFFSET_MIN   (-12)
-#define TZ_OFFSET_MAX   14
 
 struct NodePrefs {
 	/* ---- Common fields (both roles) ---- */
@@ -149,10 +147,10 @@ struct NodePrefs {
 	uint8_t display_rotate;         // 1 = panel rotated 180 degrees
 	uint8_t input_rotate;           // 1 = joystick up/down and left/right swapped
 
-	/* Whole-hour offset from UTC, -12..+14, applied only when formatting a clock
-	 * for the local display. It must never reach RTCClock or any timestamp that
-	 * leaves this node. */
-	int8_t tz_offset;
+	/* Hours from UTC, -12..+14 in quarter hours (float, as upstream), applied
+	 * only when formatting a clock for the local display. It must never reach
+	 * RTCClock or any timestamp that leaves this node. See tz_offset.h. */
+	float tz_offset;
 
 	/* The family base detPeak that cad_offset was learned against (0 = never
 	 * stored). Lets the firmware re-anchor the offset at boot when the driver's
@@ -354,8 +352,9 @@ static inline void sanitizeNodePrefs(NodePrefs* p) {
 	/* Neutral, not the boundary — a garbage offset is not a request to run
 	 * the CAD staircase at one end of its range. */
 	if (p->cad_offset < CAD_OFFSET_MIN || p->cad_offset > CAD_OFFSET_MAX) p->cad_offset = 0;
-	/* UTC, not a boundary zone, for a byte that carries no user intent. */
-	if (p->tz_offset < TZ_OFFSET_MIN || p->tz_offset > TZ_OFFSET_MAX) p->tz_offset = 0;
+	/* UTC, not a boundary zone, for a value that carries no user intent;
+	 * an in-range value snaps to the nearest quarter hour. */
+	p->tz_offset = tz_offset_sanitize(p->tz_offset);
 	if (p->probe_interval != 0 && p->probe_interval < 10) p->probe_interval = 10;
 
 	/* 6-digit BLE passkey — anything else is rejected at pairing time and
