@@ -21,6 +21,7 @@ add_executable(zephcore_unit
   unit/lpp_tests.cpp
   unit/telemetry_text_tests.cpp
   unit/kiss_modem_tests.cpp
+  unit/epever_tests.cpp
   support/hash_capture.cpp
   support/identity_utils_boundary.cpp
   ${PRODUCTION}/src/Dispatcher.cpp

@@ -963,6 +963,37 @@ config ZEPHCORE_RTC_AUTODISCOVER
 	  subsystem). Safe to leave on: a board that declares no
 	  zephcore,rtc-i2c node compiles to nothing.
 
+menu "Epever Charge Controller"
+
+config ZEPHCORE_EPEVER
+	bool "Epever Tracer AN charge controller telemetry (Modbus RTU)"
+	default y
+	depends on DT_HAS_ZEPHYR_MODBUS_SERIAL_ENABLED
+	depends on ZEPHCORE_ROLE_REPEATER || ZEPHCORE_ROLE_ROOM_SERVER
+	select MODBUS
+	select UART_INTERRUPT_DRIVEN
+	help
+	  Reads an Epever Tracer AN / AN G3 charge controller over RS-485
+	  (the epever_modbus node, boards/common/epever.conf) and adds PV and
+	  battery values to telemetry. A controller that does not answer is
+	  left out of telemetry and polled again on the next period.
+
+if ZEPHCORE_EPEVER
+
+config ZEPHCORE_EPEVER_UNIT_ID
+	int "Modbus unit ID of the controller"
+	default 1
+	range 1 247
+
+config ZEPHCORE_EPEVER_POLL_SEC
+	int "Controller poll interval in seconds"
+	default 60
+	range 10 3600
+
+endif
+
+endmenu
+
 menu "GPS Configuration"
 
 config ZEPHCORE_GPS_POLL_INTERVAL_SEC

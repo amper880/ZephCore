@@ -167,7 +167,9 @@ jobs:
     # Roles no manifest publishes still have to compile. Built, not packaged:
     # nothing here reaches firmware/.
     - name: compile-only roles
-      run: west build -b rak4631 zephcore --pristine -- -DEXTRA_CONF_FILE="boards/common/kiss_modem.conf"
+      run: |
+        west build -b rak4631 zephcore --pristine -- -DEXTRA_CONF_FILE="boards/common/kiss_modem.conf"
+        west build -b heltec_t114 zephcore --pristine -- -DEXTRA_CONF_FILE="boards/common/repeater.conf;boards/common/epever.conf"
 
     # Hit rate is the entire point of the per-job ccache namespace above, but the
     # action only prints stats at SETUP time — it runs `ccache -z -s -vv`, which

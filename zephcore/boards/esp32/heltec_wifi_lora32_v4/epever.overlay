@@ -1,0 +1,31 @@
+/*
+ * Epever charge controller on RS-485 (boards/common/epever.conf).
+ * UART2 on the pin header: GPIO40 = TX -> transceiver DI/TXD,
+ * GPIO41 = RX <- transceiver RO/RXD. 115200 8N1, the controller's default.
+ */
+
+&pinctrl {
+	uart2_default: uart2_default {
+		group1 {
+			pinmux = <UART2_TX_GPIO40>;
+			output-high;
+		};
+
+		group2 {
+			pinmux = <UART2_RX_GPIO41>;
+			bias-pull-up;
+		};
+	};
+};
+
+&uart2 {
+	status = "okay";
+	current-speed = <115200>;
+	pinctrl-0 = <&uart2_default>;
+	pinctrl-names = "default";
+
+	epever_modbus: modbus {
+		compatible = "zephyr,modbus-serial";
+		status = "okay";
+	};
+};

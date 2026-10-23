@@ -144,6 +144,7 @@ Roles and extras are config fragments in `zephcore/boards/common/`, added throug
 | `kiss_modem.conf` | KISS modem |
 | `debug.conf` | Logging and asserts |
 | `packet_logging.conf` | One clean RAW/RX/TX line per packet, nothing else |
+| `epever.conf` | Epever charge controller in telemetry, over RS-485 ([EPEVER.md](docs/EPEVER.md)) |
 
 Every other variant, flashing per platform (ESP32 blobs and `--sysbuild`, nRF54L, MG24) and the Kconfig
 options are in [docs/BUILDING.md](docs/BUILDING.md).

@@ -46,6 +46,7 @@ west build -b <board> zephcore --pristine -- -DEXTRA_CONF_FILE="boards/common/<f
 | `debug.conf` | Logging and asserts | Combine with any role |
 | `packet_logging.conf` | One RAW/RX/TX line per packet | Logging subsystem stays off, so the console carries only these lines and the CLI |
 | `repeater_uplink.conf` | Repeater WiFi + MQTT uplink | ESP32, with `repeater.conf` |
+| `epever.conf` | Epever charge controller in telemetry (RS-485) | Repeater or room server, on boards with an `epever.overlay`; see [EPEVER.md](EPEVER.md) |
 | `wifi_ota.conf` | WiFi AP + HTTP firmware update | ESP32 repeaters; needs MCUboot, so `--sysbuild` |
 | `wifi_companion.conf` | App over TCP on your WiFi | Added automatically for boards whose manifest declares `wifi: true` |
 
@@ -63,6 +64,9 @@ west build -b rak4631 zephcore --pristine -- -DEXTRA_CONF_FILE="boards/common/re
 
 # Repeater with packet logging
 west build -b rak4631 zephcore --pristine -- -DEXTRA_CONF_FILE="boards/common/repeater.conf;boards/common/packet_logging.conf"
+
+# Repeater with packet logging and an Epever charge controller (nRF52)
+west build -b heltec_t114 zephcore --pristine -- -DEXTRA_CONF_FILE="boards/common/repeater.conf;boards/common/packet_logging.conf;boards/common/epever.conf"
 
 # ESP32-S3 repeater (WiFi OTA comes with it, hence sysbuild)
 west build -b xiao_esp32s3/esp32s3/procpu zephcore --pristine --sysbuild -- -DEXTRA_CONF_FILE="boards/common/repeater.conf"
@@ -147,6 +151,9 @@ Set them in a board conf or with `-DCONFIG_...=`. The full list with help texts 
 | `ZEPHCORE_PACKET_LOGGING` | n | Upstream-format packet log lines (`packet_logging.conf`) |
 | `ZEPHCORE_WIFI_OTA` | n | WiFi AP + HTTP firmware update (ESP32 repeaters) |
 | `ZEPHCORE_REPEATER_UPLINK` | n | Repeater WiFi + MQTT uplink (ESP32) |
+| `ZEPHCORE_EPEVER` | y with `epever.conf` | Epever charge controller over Modbus RTU (`epever.conf`) |
+| `ZEPHCORE_EPEVER_UNIT_ID` | 1 | Modbus unit ID of the controller |
+| `ZEPHCORE_EPEVER_POLL_SEC` | 60 | Controller poll interval (10 to 3600) |
 | `ZEPHCORE_HOUSEKEEPING_INTERVAL_MS` | 5000 | Companion housekeeping tick |
 
 ## Tests

@@ -1,0 +1,18 @@
+/*
+ * Epever charge controller on RS-485 (boards/common/epever.conf).
+ * uart0: P0.16 = TX, P0.15 = RX, the WisBlock TXD1/RXD1 lines (RX1/TX1 on the
+ * base board header). The GPS slot shares them, so this build has no GPS.
+ * The transceiver runs from 3V3_S (WB_IO2). 115200 8N1, the controller's
+ * default.
+ */
+
+/delete-node/ &gnss;
+
+&uart0 {
+	current-speed = <115200>;
+
+	epever_modbus: modbus {
+		compatible = "zephyr,modbus-serial";
+		status = "okay";
+	};
+};

@@ -253,6 +253,17 @@ foreach(_c IN LISTS ZEPHCORE_USER_CONFS)
     zephcore_add_conf("${_c}")
 endforeach()
 
+# Epever charge controller: boards/common/epever.conf carries the Kconfig, the
+# board's epever.overlay the UART and pins of the RS-485 transceiver.
+if("epever" IN_LIST _user_conf_names)
+    zephcore_board_file(_epever_overlay epever.overlay)
+    if(NOT _epever_overlay)
+        message(FATAL_ERROR "ZephCore: epever.conf needs boards/<platform>/"
+                "${ZEPHCORE_BOARD_BASE}/epever.overlay (RS-485 UART and pins)")
+    endif()
+    zephcore_add_overlay("${_epever_overlay}")
+endif()
+
 # ESP32 debug builds: debug.conf is nRF/SEGGER-RTT shaped — on ESP32 RTT yields
 # no output (no J-Link; logs go out the UART console) and the deferred-log DRAM
 # overflows the classic ESP32. debug_esp32.conf goes LAST so it wins over
@@ -418,6 +429,9 @@ target_sources_ifdef(CONFIG_SENSOR app PRIVATE adapters/sensors/spa06.c)
 # T1000-E onboard NTC + photocell on the SAADC. Same deal: compiles to nothing
 # when no seeed,t1000e-analog node is present.
 target_sources_ifdef(CONFIG_SENSOR app PRIVATE adapters/sensors/t1000e_analog.c)
+
+# Epever charge controller over Modbus RTU (boards/common/epever.conf).
+target_sources_ifdef(CONFIG_ZEPHCORE_EPEVER app PRIVATE adapters/sensors/ZephyrEpever.c)
 
 # ========== Battery Curve Selection ==========
 # helpers/battery_curve.c is always compiled — it provides battery_curve_lookup()

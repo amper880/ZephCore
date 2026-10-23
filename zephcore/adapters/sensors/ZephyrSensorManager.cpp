@@ -5,6 +5,10 @@
 
 #include "ZephyrSensorManager.h"
 
+#ifdef CONFIG_ZEPHCORE_EPEVER
+#include "ZephyrEpever.h"
+#endif
+
 #include <stdlib.h>
 #include <string.h>
 
@@ -14,6 +18,9 @@ bool ZephyrSensorManager::begin()
 {
 	gps_manager_init();
 	env_sensors_init();
+#ifdef CONFIG_ZEPHCORE_EPEVER
+	epever_init();
+#endif
 	return true;
 }
 
@@ -68,6 +75,22 @@ bool ZephyrSensorManager::querySensors(uint8_t requester_permissions, CayenneLPP
 				telemetry.addPower(ch, r.power_w);
 			}
 		}
+#ifdef CONFIG_ZEPHCORE_EPEVER
+		/* Charge controller after the sensors: battery, then PV. */
+		struct epever_reading e;
+
+		if (epever_get(&e)) {
+			uint8_t batt_ch = next_available_channel++;
+			uint8_t pv_ch = next_available_channel++;
+
+			telemetry.addVoltage(batt_ch, e.batt_voltage_v);
+			telemetry.addCurrent(batt_ch, e.batt_charge_current_a);
+			telemetry.addTemperature(batt_ch, e.batt_temperature_c);
+			telemetry.addVoltage(pv_ch, e.pv_voltage_v);
+			telemetry.addCurrent(pv_ch, e.pv_current_a);
+			telemetry.addPower(pv_ch, e.pv_power_w);
+		}
+#endif
 	}
 	return true;
 }

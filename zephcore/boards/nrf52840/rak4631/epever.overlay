@@ -1,0 +1,21 @@
+/*
+ * Epever charge controller on RS-485 (boards/common/epever.conf).
+ * Serial1 (uart1): P0.16 = TX, P0.15 = RX. These are the WisBlock TXD1/RXD1
+ * lines: the RX1/TX1 header pins of the RAK19007 and the UART of a RAK5802
+ * RS485 module in the IO slot. The GPS slot shares them, so this build has
+ * no GPS. The transceiver runs from 3V3_S (WB_IO2, hogged on in board.overlay).
+ * 115200 8N1, the controller's default.
+ */
+
+/delete-node/ &gnss;
+
+&uart1 {
+	compatible = "nordic,nrf-uarte";
+	status = "okay";
+	current-speed = <115200>;
+
+	epever_modbus: modbus {
+		compatible = "zephyr,modbus-serial";
+		status = "okay";
+	};
+};
