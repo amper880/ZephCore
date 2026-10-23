@@ -48,13 +48,16 @@
  *  Sensor      │ Address │ Compatible   │ Channels
  *  ────────────┼─────────┼──────────────┼────────────────────
  *  INA219      │ 0x40    │ ti,ina219    │ 1ch: V + I + P
- *  INA3221     │ 0x40    │ ti,ina3221   │ 3ch: V + I + P
+ *  INA3221     │ 0x41    │ ti,ina3221   │ 3ch: V + I + P
  *  INA226      │ 0x40    │ ti,ina226    │ 1ch: V + I + P
  *
  *  Note: INA219, INA3221, and INA226 share address 0x40 — only one
  *  can be defined at a time.  Boards with a specific INA chip should
  *  delete the others or override this file.
  *  We define INA219 as default (most common single-channel monitor).
+ *  The INA3221 is declared at 0x41 (A0 strapped to VS) so the INA219
+ *  driver, which writes without identifying the part, never reaches it;
+ *  its own driver checks the manufacturer and die IDs first.
  */
 
 /* ── Temperature / Humidity ── */
@@ -111,6 +114,13 @@ ina219: ina219@40 {
 	reg = <0x40>;
 	shunt-milliohm = <100>;
 	lsb-microamp = <10>;
+};
+
+/* Shunts in milliohm, per channel: the 0.1 ohm of the common breakouts. */
+ina3221: ina3221@41 {
+	compatible = "ti,ina3221";
+	reg = <0x41>;
+	shunt-resistors = <100 100 100>;
 };
 
 /* Real-time clocks are NOT here — they live in the opt-in "rtc-i2c.dtsi"
