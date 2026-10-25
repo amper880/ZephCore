@@ -1,6 +1,8 @@
-# ZephCore 1.18.2-zephcore
+# ZephCore 1.18.1-zephcore-epv1.0
 
-Solar charge controller and INA3221 readings in repeater telemetry.
+First release of the EPV feature set on ZephCore 1.18.1: solar charge controller and INA3221
+readings in repeater telemetry. The node reports `1.18.1-zephcore-epv1.0` on `ver`, in the MQTT
+status and over BLE; the companion app's device info shows `1.18.1-epv1.0`.
 
 > [!NOTE]
 > A normal upgrade keeps your identity, settings, contacts and phone pairing.

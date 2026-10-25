@@ -40,6 +40,21 @@ project; ZephCore follows them and does not change what goes over the air.
 > About 99% of this code was written by AI. A human decides what gets built and tests it on real radios.
 > More on that [at the bottom](#who-wrote-this).
 
+## This fork: EPV features
+
+This fork adds Epever charge controller telemetry over RS-485, an INA3221 at 0x41 and a second
+sensor bus on the Heltec V3/V4 ([docs/EPEVER.md](docs/EPEVER.md)). Its feature set has its own
+version, `ZEPHCORE_EPV_VERSION` in `zephcore/CMakeLists.txt`, appended to the ZephCore version
+everywhere the node reports one: `1.18.1-zephcore-epv1.0` on `ver`, in the MQTT status and over
+BLE, `1.18.1-epv1.0` in the companion app's 20-byte field.
+
+- **Minor** (1.0 → 1.1): a fix, or a new option that leaves existing builds as they were.
+- **Major** (1.x → 2.0): a change an existing installation notices: telemetry channels move,
+  or wiring or a fragment changes.
+- A ZephCore update underneath keeps the EPV number (`1.18.2-zephcore-epv1.0`).
+
+Each EPV version has its notes in `releasenotes/RELEASE_NOTES_<reported version>.md`.
+
 ## Get it on your device
 
 1. **Web flasher** (easiest): open [zephcore.meshcore.dev](https://zephcore.meshcore.dev) in Chrome or

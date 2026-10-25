@@ -35,6 +35,21 @@ list(APPEND BOARD_ROOT ${CMAKE_CURRENT_SOURCE_DIR})
 # version key. The release workflow reads this line directly — keep its form.
 set(ZEPHCORE_FIRMWARE_VERSION "1.18.1-zephcore")
 
+# EPV feature version of this fork (Epever, INA3221, second sensor bus; history
+# in releasenotes/RELEASE_NOTES_<reported version>.md). Every version the
+# device reports carries it: <ZEPHCORE_FIRMWARE_VERSION>-epv<this>. The
+# companion's 20-byte app field gets the short form, <x.y.z>-epv<this>. The
+# release workflow reads this line too — keep its form.
+set(ZEPHCORE_EPV_VERSION "1.0")
+set(ZEPHCORE_REPORTED_VERSION "${ZEPHCORE_FIRMWARE_VERSION}-epv${ZEPHCORE_EPV_VERSION}")
+string(REGEX REPLACE "-.*$" "" _base_version "${ZEPHCORE_FIRMWARE_VERSION}")
+set(ZEPHCORE_REPORTED_VERSION_SHORT "${_base_version}-epv${ZEPHCORE_EPV_VERSION}")
+string(LENGTH "${ZEPHCORE_REPORTED_VERSION_SHORT}" _short_len)
+if(_short_len GREATER 19)
+    message(FATAL_ERROR "ZephCore: '${ZEPHCORE_REPORTED_VERSION_SHORT}' does not fit the "
+            "companion's 20-byte version field")
+endif()
+
 # ========== Helpers ==========
 # Append FILE to the overlay list once, keeping its FIRST position. Position is
 # precedence in devicetree, so a re-append would silently move an overlay later
@@ -160,7 +175,7 @@ endif()
 # The BLE DIS firmware revision is Kconfig, so it is generated from the one
 # version string above rather than kept by hand in a second place.
 set(_version_conf "${CMAKE_BINARY_DIR}/zephcore_version.conf")
-file(WRITE "${_version_conf}" "CONFIG_BT_DIS_FW_REV_STR=\"${ZEPHCORE_FIRMWARE_VERSION}\"\n")
+file(WRITE "${_version_conf}" "CONFIG_BT_DIS_FW_REV_STR=\"${ZEPHCORE_REPORTED_VERSION}\"\n")
 list(APPEND ZEPHCORE_CONFS "${_version_conf}")
 zephcore_board_file(ZEPHCORE_BOARD_CONF board.conf)
 if(ZEPHCORE_BOARD_CONF)
@@ -346,7 +361,8 @@ add_definitions(-DFIRMWARE_BUILD_EPOCH=${ZEPHCORE_BUILD_EPOCH}u)
 # Version string: set once near the top of this file (the release workflow reads
 # that line). The per-app `#ifndef FIRMWARE_VERSION` fallbacks only apply to
 # builds that bypass this injection.
-add_definitions(-DFIRMWARE_VERSION="${ZEPHCORE_FIRMWARE_VERSION}")
+add_definitions(-DFIRMWARE_VERSION="${ZEPHCORE_REPORTED_VERSION}")
+add_definitions(-DFIRMWARE_VERSION_SHORT="${ZEPHCORE_REPORTED_VERSION_SHORT}")
 
 add_subdirectory(lib/monocypher)
 target_link_libraries(app PRIVATE monocypher)

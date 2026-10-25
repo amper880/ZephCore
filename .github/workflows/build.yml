@@ -427,11 +427,13 @@ jobs:
     - name: derive release tag from firmware version
       id: tag
       run: |
-        version=$(sed -n 's/^set(ZEPHCORE_FIRMWARE_VERSION "\(.*\)")/\1/p' zephcore/CMakeLists.txt)
-        if [ -z "$version" ]; then
-          echo "::error::Could not read ZEPHCORE_FIRMWARE_VERSION from zephcore/CMakeLists.txt"
+        base=$(sed -n 's/^set(ZEPHCORE_FIRMWARE_VERSION "\(.*\)")/\1/p' zephcore/CMakeLists.txt)
+        epv=$(sed -n 's/^set(ZEPHCORE_EPV_VERSION "\(.*\)")/\1/p' zephcore/CMakeLists.txt)
+        if [ -z "$base" ] || [ -z "$epv" ]; then
+          echo "::error::Could not read ZEPHCORE_FIRMWARE_VERSION / ZEPHCORE_EPV_VERSION from zephcore/CMakeLists.txt"
           exit 1
         fi
+        version="$base-epv$epv"
         echo "Release tag / catalog version: $version"
         echo "release_tag=$version" >> $GITHUB_OUTPUT
 
