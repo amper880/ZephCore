@@ -46,6 +46,7 @@ struct sensor_entry {
 	const struct device *dev;
 	uint8_t kind;
 	uint8_t sub;         /* INA3221 channel, 1-3 */
+	const char *part;
 };
 
 /* Worst case: every part present, INA3221 as three. */
@@ -73,7 +74,7 @@ static void add(const struct device *dev, enum sensor_kind kind, uint8_t sub, co
 	if (s_count >= MAX_SENSORS) {
 		return;
 	}
-	s_sensors[s_count++] = (struct sensor_entry){ dev, (uint8_t)kind, sub };
+	s_sensors[s_count++] = (struct sensor_entry){ dev, (uint8_t)kind, sub, part };
 	LOG_INF("Found sensor: %s (%s)", dev->name, part);
 }
 
@@ -173,6 +174,29 @@ int env_sensor_count(void)
 	return s_count;
 #else
 	return 0;
+#endif
+}
+
+const char *env_sensor_part(int index, uint8_t *sub)
+{
+#if HAS_ENV_SENSORS
+	if (index >= 0 && index < s_count) {
+		*sub = s_sensors[index].sub;
+		return s_sensors[index].part;
+	}
+#else
+	ARG_UNUSED(index);
+#endif
+	*sub = 0;
+	return "";
+}
+
+const char *env_sensors_bus_name(void)
+{
+#if HAS_ENV_SENSORS && DT_NODE_EXISTS(DT_NODELABEL(sht4x))
+	return DEVICE_DT_GET(DT_BUS(DT_NODELABEL(sht4x)))->name;
+#else
+	return "none";
 #endif
 }
 

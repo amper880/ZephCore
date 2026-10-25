@@ -5,6 +5,8 @@
 
 #include "ZephyrEpever.h"
 
+#include <stdio.h>
+
 #include <zephyr/kernel.h>
 #include <zephyr/device.h>
 #include <zephyr/drivers/uart.h>
@@ -41,6 +43,11 @@ static struct epever_reading s_reading;
 static int64_t s_stamp_ms;
 static bool s_valid;
 static int s_iface = -1;
+static int s_init_rc = -EAGAIN;
+static uint32_t s_polls;
+static uint32_t s_answers;
+static int s_last_rc;
+static int64_t s_last_poll_ms;
 
 /* Bus active: no light sleep (an ESP32 UART stops in it) and, on nRF, the
  * UARTE resumed. Idle: the reverse. */
@@ -84,7 +91,11 @@ static void poll_once(void)
 	bus_active(false);
 
 	k_mutex_lock(&s_lock, K_FOREVER);
+	s_polls++;
+	s_last_rc = rc;
+	s_last_poll_ms = k_uptime_get();
 	if (rc == 0) {
+		s_answers++;
 		if (!s_valid) {
 			LOG_INF("Epever charge controller found (unit %d)",
 				CONFIG_ZEPHCORE_EPEVER_UNIT_ID);
@@ -127,13 +138,13 @@ int epever_init(void)
 	s_iface = modbus_iface_get_by_name(iface_name);
 	if (s_iface < 0) {
 		LOG_ERR("Modbus interface %s not found", iface_name);
-		return -ENODEV;
+		s_init_rc = -ENODEV;
+		return s_init_rc;
 	}
-	int rc = modbus_init_client(s_iface, param);
-
-	if (rc != 0) {
-		LOG_ERR("Modbus client init failed: %d", rc);
-		return rc;
+	s_init_rc = modbus_init_client(s_iface, param);
+	if (s_init_rc != 0) {
+		LOG_ERR("Modbus client init failed: %d", s_init_rc);
+		return s_init_rc;
 	}
 #if EPEVER_UART_PM
 	(void)pm_device_action_run(DEVICE_DT_GET(EPEVER_UART), PM_DEVICE_ACTION_SUSPEND);
@@ -157,4 +168,38 @@ bool epever_get(struct epever_reading *out)
 	}
 	k_mutex_unlock(&s_lock);
 	return ok;
+}
+
+int epever_format_status(char *buf, size_t len)
+{
+	const struct device *uart = DEVICE_DT_GET(EPEVER_UART);
+
+	k_mutex_lock(&s_lock, K_FOREVER);
+	int n;
+
+	if (s_init_rc != 0) {
+		n = snprintf(buf, len, "> init failed: %d (%s ready=%d)", s_init_rc, uart->name,
+			     device_is_ready(uart) ? 1 : 0);
+	} else if (s_polls == 0) {
+		n = snprintf(buf, len, "> %s %u baud unit %d, first poll pending", uart->name,
+			     (unsigned)DT_PROP(EPEVER_UART, current_speed),
+			     CONFIG_ZEPHCORE_EPEVER_UNIT_ID);
+	} else {
+		n = snprintf(buf, len, "> %s unit %d polls %u answered %u last %d %llds ago",
+			     uart->name, CONFIG_ZEPHCORE_EPEVER_UNIT_ID, (unsigned)s_polls,
+			     (unsigned)s_answers, s_last_rc,
+			     (long long)((k_uptime_get() - s_last_poll_ms) / MSEC_PER_SEC));
+		if (s_valid && n > 0 && (size_t)n < len) {
+			n += snprintf(buf + n, len - n,
+				      " batt %.2fV %.2fA %.1fC pv %.2fV %.2fA %.0fW",
+				      (double)s_reading.batt_voltage_v,
+				      (double)s_reading.batt_charge_current_a,
+				      (double)s_reading.batt_temperature_c,
+				      (double)s_reading.pv_voltage_v,
+				      (double)s_reading.pv_current_a,
+				      (double)s_reading.pv_power_w);
+		}
+	}
+	k_mutex_unlock(&s_lock);
+	return n;
 }

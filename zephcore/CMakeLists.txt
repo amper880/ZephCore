@@ -40,7 +40,7 @@ set(ZEPHCORE_FIRMWARE_VERSION "1.18.1-zephcore")
 # device reports carries it: <ZEPHCORE_FIRMWARE_VERSION>-epv<this>. The
 # companion's 20-byte app field gets the short form, <x.y.z>-epv<this>. The
 # release workflow reads this line too — keep its form.
-set(ZEPHCORE_EPV_VERSION "1.0")
+set(ZEPHCORE_EPV_VERSION "1.1")
 set(ZEPHCORE_REPORTED_VERSION "${ZEPHCORE_FIRMWARE_VERSION}-epv${ZEPHCORE_EPV_VERSION}")
 string(REGEX REPLACE "-.*$" "" _base_version "${ZEPHCORE_FIRMWARE_VERSION}")
 set(ZEPHCORE_REPORTED_VERSION_SHORT "${_base_version}-epv${ZEPHCORE_EPV_VERSION}")

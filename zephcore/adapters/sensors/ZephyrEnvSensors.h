@@ -63,6 +63,13 @@ int env_sensor_count(void);
  * the node's own channel, as upstream's T1000 variant does. */
 bool env_sensor_is_board_local(int index);
 
+/* Part name of one entry ("SHT4x", "INA3221"); *sub is its INA3221 channel,
+ * else 0. */
+const char *env_sensor_part(int index, uint8_t *sub);
+
+/* Name of the bus the sensor list is declared on, "none" without one. */
+const char *env_sensors_bus_name(void);
+
 /* Read one entry. 0 on success (r->fields says what it had). */
 int env_sensor_read(int index, struct env_sensor_reading *r);
 

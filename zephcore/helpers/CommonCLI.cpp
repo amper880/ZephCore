@@ -21,6 +21,10 @@ extern "C" void power_diag_line(int n, char *out, size_t cap);  /* TEMPORARY: he
 #include <helpers/AdvertDataHelpers.h>
 #include <adapters/board/ZephyrBoard.h>
 #include <adapters/gps/ZephyrGPSManager.h>
+#include <adapters/sensors/ZephyrEnvSensors.h>
+#ifdef CONFIG_ZEPHCORE_EPEVER
+#include <adapters/sensors/ZephyrEpever.h>
+#endif
 #include <zephyr/logging/log.h>
 #include <stdlib.h>
 #include <string.h>
@@ -980,6 +984,36 @@ bool CommonCLI::handleRadioCmd(uint32_t sender_timestamp, const char* command, c
 
 void CommonCLI::handleGetCmd(uint32_t sender_timestamp, const char* command, char* reply) {
 	const char* config = &command[4];
+	if (strcmp(config, "sensors") == 0) {
+		int n = env_sensor_count();
+		int len = snprintf(reply, CLI_REPLY_SIZE, "> %s: %d", env_sensors_bus_name(), n);
+
+		for (int i = 0; i < n && len > 0 && len < CLI_REPLY_SIZE; i++) {
+			struct env_sensor_reading r;
+			uint8_t sub;
+			const char *part = env_sensor_part(i, &sub);
+			bool ok = env_sensor_read(i, &r) == 0;
+
+			const char *state = ok ? "ok" : "read failed";
+
+			if (sub != 0) {
+				len += snprintf(reply + len, CLI_REPLY_SIZE - len, ", %s/%u %s",
+						part, (unsigned)sub, state);
+			} else {
+				len += snprintf(reply + len, CLI_REPLY_SIZE - len, ", %s %s",
+						part, state);
+			}
+		}
+		return;
+	}
+	if (strcmp(config, "epever") == 0) {
+#ifdef CONFIG_ZEPHCORE_EPEVER
+		epever_format_status(reply, CLI_REPLY_SIZE);
+#else
+		strcpy(reply, "Error: no Epever support in this build");
+#endif
+		return;
+	}
 	if (strcmp(config, "pm") == 0) {
 		if (zc_pm_format_stats(reply, CLI_REPLY_SIZE) == 0) {
 			strcpy(reply, "Error: no light sleep on this build");

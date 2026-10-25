@@ -12,6 +12,7 @@
 #pragma once
 
 #include <stdbool.h>
+#include <stddef.h>
 #include <helpers/EpeverRegisters.h>
 
 #ifdef __cplusplus
@@ -24,6 +25,10 @@ int epever_init(void);
 /* The last reading, if the controller answered within the last three poll
  * periods. Any thread. */
 bool epever_get(struct epever_reading *out);
+
+/* One `get epever` line: init result, poll and answer counts, the last
+ * result and its age, and the last reading while it is valid. */
+int epever_format_status(char *buf, size_t len);
 
 #ifdef __cplusplus
 }

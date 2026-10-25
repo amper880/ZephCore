@@ -78,6 +78,12 @@ west build -b heltec_wifi_lora32_v3/esp32s3/procpu zephcore --pristine --sysbuil
   -DEXTRA_CONF_FILE="boards/common/repeater.conf;boards/common/repeater_uplink.conf;boards/common/epever.conf;boards/common/sensors_i2c1.conf"
 ```
 
+## Troubleshooting
+
+Over USB, `get epever` shows whether the Modbus client started and what the polls returned, and
+`get sensors` which I2C parts were found at boot and whether they read now. A poll is two short
+frames every `ZEPHCORE_EPEVER_POLL_SEC`, the first 5 s after boot.
+
 ## INA3221
 
 `boards/common/sensors-i2c.dtsi` declares an INA3221 at 0x41 (A0 strapped to VS) with 0.1 Ω
