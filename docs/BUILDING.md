@@ -47,6 +47,7 @@ west build -b <board> zephcore --pristine -- -DEXTRA_CONF_FILE="boards/common/<f
 | `packet_logging.conf` | One RAW/RX/TX line per packet | Logging subsystem stays off, so the console carries only these lines and the CLI |
 | `repeater_uplink.conf` | Repeater WiFi + MQTT uplink | ESP32, with `repeater.conf` |
 | `epever.conf` | Epever charge controller in telemetry (RS-485) | Repeater or room server, on boards with an `epever.overlay`; see [EPEVER.md](EPEVER.md) |
+| `sensors_i2c1.conf` | External I2C sensors on a second bus | Boards with a `sensors_i2c1.overlay` (Heltec V3, V4: GPIO6 = SDA, GPIO4 = SCL); the display keeps its own bus |
 | `wifi_ota.conf` | WiFi AP + HTTP firmware update | ESP32 repeaters; needs MCUboot, so `--sysbuild` |
 | `wifi_companion.conf` | App over TCP on your WiFi | Added automatically for boards whose manifest declares `wifi: true` |
 

@@ -1,0 +1,16 @@
+/*
+ * SPDX-License-Identifier: MIT
+ *
+ * Removes every node of sensors-i2c.dtsi, so an overlay can include that
+ * file under another bus. Keep the list in step with sensors-i2c.dtsi.
+ */
+
+/delete-node/ &shtc3;
+/delete-node/ &aht20;
+/delete-node/ &sht4x;
+/delete-node/ &bme280;
+/delete-node/ &bme280_alt;
+/delete-node/ &lps22hb;
+/delete-node/ &bmp388;
+/delete-node/ &ina219;
+/delete-node/ &ina3221;

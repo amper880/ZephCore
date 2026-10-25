@@ -381,7 +381,9 @@ jobs:
 
     # Roles no manifest publishes still have to compile (see build-nrf).
     - name: compile-only roles
-      run: west build -b xiao_esp32c3 zephcore --pristine -- -DEXTRA_CONF_FILE="boards/common/kiss_modem.conf"
+      run: |
+        west build -b xiao_esp32c3 zephcore --pristine -- -DEXTRA_CONF_FILE="boards/common/kiss_modem.conf"
+        west build -b heltec_wifi_lora32_v3/esp32s3/procpu zephcore --pristine --sysbuild -- -DEXTRA_CONF_FILE="boards/common/repeater.conf;boards/common/sensors_i2c1.conf"
 
     - name: ccache stats
       if: always()

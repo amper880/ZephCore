@@ -145,6 +145,7 @@ Roles and extras are config fragments in `zephcore/boards/common/`, added throug
 | `debug.conf` | Logging and asserts |
 | `packet_logging.conf` | One clean RAW/RX/TX line per packet, nothing else |
 | `epever.conf` | Epever charge controller in telemetry, over RS-485 ([EPEVER.md](docs/EPEVER.md)) |
+| `sensors_i2c1.conf` | External I2C sensors on a second bus (Heltec V3/V4: GPIO6/GPIO4) |
 
 Every other variant, flashing per platform (ESP32 blobs and `--sysbuild`, nRF54L, MG24) and the Kconfig
 options are in [docs/BUILDING.md](docs/BUILDING.md).

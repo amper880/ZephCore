@@ -65,6 +65,19 @@ If the controller does not answer, swap A and B first.
 | Heltec V3 | uart2 | GPIO40 | GPIO41 | Header pins; the GPS keeps uart1 (47/48) |
 | Heltec V4 | uart2 | GPIO40 | GPIO41 | Header pins; the GPS keeps uart1 (38/39) |
 
+## External I2C sensors on the Heltec V3 and V4
+
+On these boards the I2C bus of the OLED (GPIO17/18) is not on the pin header. Add
+`boards/common/sensors_i2c1.conf` to the build and the sensor list moves to a second bus,
+i2c1, at 100 kHz: **GPIO6 = SDA, GPIO4 = SCL**, sensors powered from 3V3. The bus needs
+pull-ups to 3.3 V; most SHT40 and INA3221 breakouts carry them, otherwise fit 4.7 kΩ on each
+line. GPIO7 is not usable on the V4 (it powers the PA/FEM).
+
+```bash
+west build -b heltec_wifi_lora32_v3/esp32s3/procpu zephcore --pristine --sysbuild -- \
+  -DEXTRA_CONF_FILE="boards/common/repeater.conf;boards/common/repeater_uplink.conf;boards/common/epever.conf;boards/common/sensors_i2c1.conf"
+```
+
 ## INA3221
 
 `boards/common/sensors-i2c.dtsi` declares an INA3221 at 0x41 (A0 strapped to VS) with 0.1 Ω

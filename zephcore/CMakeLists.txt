@@ -253,16 +253,19 @@ foreach(_c IN LISTS ZEPHCORE_USER_CONFS)
     zephcore_add_conf("${_c}")
 endforeach()
 
-# Epever charge controller: boards/common/epever.conf carries the Kconfig, the
-# board's epever.overlay the UART and pins of the RS-485 transceiver.
-if("epever" IN_LIST _user_conf_names)
-    zephcore_board_file(_epever_overlay epever.overlay)
-    if(NOT _epever_overlay)
-        message(FATAL_ERROR "ZephCore: epever.conf needs boards/<platform>/"
-                "${ZEPHCORE_BOARD_BASE}/epever.overlay (RS-485 UART and pins)")
+# Wiring fragments: boards/common/<name>.conf carries the Kconfig, the board's
+# <name>.overlay the pins (epever: the RS-485 UART; sensors_i2c1: the external
+# sensor bus).
+foreach(_frag epever sensors_i2c1)
+    if("${_frag}" IN_LIST _user_conf_names)
+        zephcore_board_file(_frag_overlay ${_frag}.overlay)
+        if(NOT _frag_overlay)
+            message(FATAL_ERROR "ZephCore: ${_frag}.conf needs boards/<platform>/"
+                    "${ZEPHCORE_BOARD_BASE}/${_frag}.overlay")
+        endif()
+        zephcore_add_overlay("${_frag_overlay}")
     endif()
-    zephcore_add_overlay("${_epever_overlay}")
-endif()
+endforeach()
 
 # ESP32 debug builds: debug.conf is nRF/SEGGER-RTT shaped — on ESP32 RTT yields
 # no output (no J-Link; logs go out the UART console) and the deferred-log DRAM

@@ -21,3 +21,9 @@ is in [docs/EPEVER.md](../docs/EPEVER.md).
 
 The I2C sensor list now includes an INA3221 at 0x41 (A0 to VS), three channels of voltage,
 current and power, each on its own telemetry channel. 0x40 stays with the INA219.
+
+## External I2C sensors on the Heltec V3 and V4
+
+The OLED's I2C bus is not on the pin header of these boards. A build with
+`boards/common/sensors_i2c1.conf` looks for the external sensors on a second bus instead: GPIO6
+(SDA) and GPIO4 (SCL), the same pins on both boards. The standard builds are unchanged.

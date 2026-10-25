@@ -12,6 +12,9 @@
  *       #include "../../common/sensors-i2c.dtsi"
  *   };
  *
+ * Every node label defined here is also listed in sensors-i2c-delete.dtsi,
+ * which moves the set to another bus (boards/common/sensors_i2c1.conf).
+ *
  * ─── Environment Sensors (temperature / humidity / pressure) ───
  *
  *  Sensor      │ Address │ Compatible          │ Channels

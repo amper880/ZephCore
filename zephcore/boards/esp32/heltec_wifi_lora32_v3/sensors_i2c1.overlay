@@ -1,0 +1,26 @@
+/*
+ * External I2C sensors on i2c1 (boards/common/sensors_i2c1.conf): GPIO6 = SDA,
+ * GPIO4 = SCL on the pin header, 100 kHz. The OLED keeps i2c0 (GPIO17/18).
+ * The bus needs pull-ups to 3.3 V; most sensor breakouts carry them.
+ */
+
+#include "../../common/sensors-i2c-delete.dtsi"
+
+&pinctrl {
+	i2c1_default: i2c1_default {
+		group1 {
+			pinmux = <I2C1_SDA_GPIO6>,
+				 <I2C1_SCL_GPIO4>;
+			drive-open-drain;
+		};
+	};
+};
+
+&i2c1 {
+	status = "okay";
+	clock-frequency = <I2C_BITRATE_STANDARD>;
+	pinctrl-0 = <&i2c1_default>;
+	pinctrl-names = "default";
+
+	#include "../../common/sensors-i2c.dtsi"
+};
