@@ -970,7 +970,7 @@ config ZEPHCORE_EPEVER
 	default y
 	depends on DT_HAS_ZEPHYR_MODBUS_SERIAL_ENABLED
 	depends on ZEPHCORE_ROLE_REPEATER || ZEPHCORE_ROLE_ROOM_SERVER
-	select MODBUS
+	select SERIAL
 	select UART_INTERRUPT_DRIVEN
 	help
 	  Reads an Epever Tracer AN / AN G3 charge controller over RS-485

@@ -29,6 +29,7 @@ extern "C" void power_diag_line(int n, char *out, size_t cap);  /* TEMPORARY: he
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
+#include <stdarg.h>
 #include <time.h>
 
 #if IS_ENABLED(CONFIG_ZEPHCORE_WIFI_OTA)
@@ -982,26 +983,59 @@ bool CommonCLI::handleRadioCmd(uint32_t sender_timestamp, const char* command, c
 	return false;
 }
 
+/* Appends to a CLI reply; the length stays within the buffer. */
+static int reply_append(char *reply, int len, const char *fmt, ...)
+{
+	if (len >= CLI_REPLY_SIZE - 1) {
+		return len;
+	}
+	va_list ap;
+
+	va_start(ap, fmt);
+	int n = vsnprintf(reply + len, CLI_REPLY_SIZE - len, fmt, ap);
+
+	va_end(ap);
+	if (n < 0) {
+		return len;
+	}
+	return (len + n < CLI_REPLY_SIZE - 1) ? len + n : CLI_REPLY_SIZE - 1;
+}
+
 void CommonCLI::handleGetCmd(uint32_t sender_timestamp, const char* command, char* reply) {
 	const char* config = &command[4];
 	if (strcmp(config, "sensors") == 0) {
 		int n = env_sensor_count();
-		int len = snprintf(reply, CLI_REPLY_SIZE, "> %s: %d", env_sensors_bus_name(), n);
+		int len = reply_append(reply, 0, "> %s: %d", env_sensors_bus_name(), n);
 
-		for (int i = 0; i < n && len > 0 && len < CLI_REPLY_SIZE; i++) {
+		for (int i = 0; i < n; i++) {
 			struct env_sensor_reading r;
 			uint8_t sub;
 			const char *part = env_sensor_part(i, &sub);
 			bool ok = env_sensor_read(i, &r) == 0;
 
-			const char *state = ok ? "ok" : "read failed";
-
 			if (sub != 0) {
-				len += snprintf(reply + len, CLI_REPLY_SIZE - len, ", %s/%u %s",
-						part, (unsigned)sub, state);
+				len = reply_append(reply, len, ", %s/%u", part, (unsigned)sub);
 			} else {
-				len += snprintf(reply + len, CLI_REPLY_SIZE - len, ", %s %s",
-						part, state);
+				len = reply_append(reply, len, ", %s", part);
+			}
+			if (!ok) {
+				len = reply_append(reply, len, " read failed");
+				continue;
+			}
+			if (r.fields & ENV_F_TEMPERATURE) {
+				len = reply_append(reply, len, " %.1fC", (double)r.temperature_c);
+			}
+			if (r.fields & ENV_F_HUMIDITY) {
+				len = reply_append(reply, len, " %.0f%%", (double)r.humidity_pct);
+			}
+			if (r.fields & ENV_F_PRESSURE) {
+				len = reply_append(reply, len, " %.1fhPa", (double)r.pressure_hpa);
+			}
+			if (r.fields & ENV_F_VOLTAGE) {
+				len = reply_append(reply, len, " %.3fV", (double)r.voltage_v);
+			}
+			if (r.fields & ENV_F_CURRENT) {
+				len = reply_append(reply, len, " %.4fA", (double)r.current_a);
 			}
 		}
 		return;

@@ -596,6 +596,21 @@
       "id": "UNIT-EPEVER-003",
       "name": "Battery and PV fit their LPP fields (0.01 V, 0.001 A, 1 W)",
       "source": "tests/unit/epever_tests.cpp"
+    },
+    {
+      "id": "UNIT-EPEVER-004",
+      "name": "Read request matches the Modbus spec example CRC",
+      "source": "tests/unit/epever_tests.cpp"
+    },
+    {
+      "id": "UNIT-EPEVER-005",
+      "name": "The answer is found behind an echo of the request and a stray byte",
+      "source": "tests/unit/epever_tests.cpp"
+    },
+    {
+      "id": "UNIT-EPEVER-006",
+      "name": "An exception answer returns its code; a bad CRC is not an answer",
+      "source": "tests/unit/epever_tests.cpp"
     }
   ]
 }

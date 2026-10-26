@@ -6,7 +6,9 @@
  * epever_modbus (boards/common/epever.conf + the board's epever.overlay).
  * A low-priority thread reads the controller every
  * CONFIG_ZEPHCORE_EPEVER_POLL_SEC and keeps the last good reading;
- * telemetry reads that copy and never touches the bus.
+ * telemetry reads that copy and never touches the bus. The requests are
+ * framed by helpers/ModbusRtu.h on the UART's interrupt API, which finds the
+ * answer behind a local echo of the request.
  */
 
 #pragma once

@@ -42,3 +42,50 @@ TEST(epever_lpp_fields, "UNIT-EPEVER-003", "Battery and PV fit their LPP fields 
     CHECK(std::vector<uint8_t>(l.getBuffer(), l.getBuffer() + l.getSize()) ==
           std::vector<uint8_t>({4, 116, 0x05, 0x19, 4, 117, 0x10, 0xD6, 5, 128, 0x00, 0x38}));
 }
+
+// helpers/ModbusRtu.h
+#include "ModbusRtu.h"
+
+TEST(modbus_request, "UNIT-EPEVER-004", "Read request matches the Modbus spec example CRC") {
+    uint8_t req[MODBUS_RTU_REQ_LEN];
+    modbus_rtu_read_request(req, 1, 0x03, 0x0000, 10);
+    // Read 10 holding registers from unit 1: CRC 0xCDC5, low byte first
+    CHECK(std::vector<uint8_t>(req, req + 8) ==
+          std::vector<uint8_t>({0x01, 0x03, 0x00, 0x00, 0x00, 0x0A, 0xC5, 0xCD}));
+    modbus_rtu_read_request(req, 1, 0x04, 0x3100, 8);
+    CHECK(modbus_rtu_crc(req, 8) == 0);
+}
+
+namespace {
+std::vector<uint8_t> answer(std::vector<uint8_t> body) {
+    uint16_t crc = modbus_rtu_crc(body.data(), body.size());
+    body.push_back((uint8_t)crc);
+    body.push_back((uint8_t)(crc >> 8));
+    return body;
+}
+}
+
+TEST(modbus_find, "UNIT-EPEVER-005", "The answer is found behind an echo of the request and a stray byte") {
+    uint8_t req[MODBUS_RTU_REQ_LEN];
+    modbus_rtu_read_request(req, 1, 0x04, 0x3110, 1);
+    std::vector<uint8_t> rx(req, req + 8);
+    rx.push_back(0x00);
+    std::vector<uint8_t> a = answer({0x01, 0x04, 0x02, 0x08, 0x66});
+    rx.insert(rx.end(), a.begin(), a.end());
+    uint16_t reg = 0;
+    CHECK(modbus_rtu_find_read_answer(rx.data(), rx.size(), 1, 0x04, 1, &reg) == 0);
+    CHECK(reg == 0x0866);
+    // Truncated: not yet found
+    CHECK(modbus_rtu_find_read_answer(rx.data(), rx.size() - 1, 1, 0x04, 1, &reg) == MODBUS_RTU_NOT_FOUND);
+    // Echo alone is not an answer
+    CHECK(modbus_rtu_find_read_answer(req, 8, 1, 0x04, 1, &reg) == MODBUS_RTU_NOT_FOUND);
+}
+
+TEST(modbus_exception, "UNIT-EPEVER-006", "An exception answer returns its code; a bad CRC is not an answer") {
+    std::vector<uint8_t> ex = answer({0x01, 0x84, 0x02});
+    uint16_t reg = 0;
+    CHECK(modbus_rtu_find_read_answer(ex.data(), ex.size(), 1, 0x04, 1, &reg) == 2);
+    std::vector<uint8_t> bad = answer({0x01, 0x04, 0x02, 0x08, 0x66});
+    bad.back() ^= 0xFF;
+    CHECK(modbus_rtu_find_read_answer(bad.data(), bad.size(), 1, 0x04, 1, &reg) == MODBUS_RTU_NOT_FOUND);
+}
