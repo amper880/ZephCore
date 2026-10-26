@@ -57,6 +57,10 @@ Controller RJ45 (COM port), as in the Tracer AN manual. Check it against your un
 
 If the controller does not answer, swap A and B first.
 
+TX goes to the module's driver input (DI), RX comes from its receiver output (RO). Modules
+that label these pins TXD/RXD do not agree on which side the name is from: if `get epever`
+shows `rx 0:` (nothing received), swap the two wires.
+
 | Board | UART | TX → module DI | RX ← module RO | Notes |
 |---|---|---|---|---|
 | Heltec T114 | uart1 | P0.28 | P0.29 | Header pins; the GPS keeps uart0 |

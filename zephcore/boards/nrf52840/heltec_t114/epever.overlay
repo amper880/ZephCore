@@ -1,7 +1,7 @@
 /*
  * Epever charge controller on RS-485 (boards/common/epever.conf).
- * UART1 on the pin header: P0.28 = TX -> transceiver DI/TXD,
- * P0.29 = RX <- transceiver RO/RXD. uart0 stays with the GPS.
+ * UART1 on the pin header: P0.28 = TX -> transceiver DI (its input),
+ * P0.29 = RX <- transceiver RO (its output). uart0 stays with the GPS.
  * 115200 8N1, the controller's default.
  */
 
