@@ -25,8 +25,10 @@ extern "C" {
 int epever_init(void);
 
 /* The last reading, if the controller answered within the last three poll
- * periods. Any thread. */
-bool epever_get(struct epever_reading *out);
+ * periods; *has_load says whether its load output values are in it (a
+ * controller that refuses those registers still reports the rest). Any
+ * thread. */
+bool epever_get(struct epever_reading *out, bool *has_load);
 
 /* One `get epever` line: init result, poll and answer counts, the last
  * result and its age, and the last reading while it is valid. */

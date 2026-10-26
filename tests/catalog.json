@@ -611,6 +611,11 @@
       "id": "UNIT-EPEVER-006",
       "name": "An exception answer returns its code; a bad CRC is not an answer",
       "source": "tests/unit/epever_tests.cpp"
+    },
+    {
+      "id": "UNIT-EPEVER-007",
+      "name": "Load output registers decode x100",
+      "source": "tests/unit/epever_tests.cpp"
     }
   ]
 }

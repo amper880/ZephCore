@@ -16,6 +16,9 @@ extern "C" {
 /* 0x3100-0x3107: PV V, PV I, PV P (L, H), battery V, charging I, charging P (L, H) */
 #define EPEVER_REG_PV_BLOCK      0x3100
 #define EPEVER_PV_BLOCK_LEN      8
+/* 0x310C-0x310D: load output V, I */
+#define EPEVER_REG_LOAD          0x310C
+#define EPEVER_LOAD_LEN          2
 /* Battery temperature, signed */
 #define EPEVER_REG_BATT_TEMP     0x3110
 
@@ -26,6 +29,8 @@ struct epever_reading {
 	float batt_voltage_v;
 	float batt_charge_current_a;
 	float batt_temperature_c;
+	float load_voltage_v;
+	float load_current_a;
 };
 
 static inline void epever_decode(const uint16_t pv_block[EPEVER_PV_BLOCK_LEN],
@@ -39,6 +44,13 @@ static inline void epever_decode(const uint16_t pv_block[EPEVER_PV_BLOCK_LEN],
 	out->batt_voltage_v = pv_block[4] / 100.0f;
 	out->batt_charge_current_a = pv_block[5] / 100.0f;
 	out->batt_temperature_c = (int16_t)batt_temp / 100.0f;
+}
+
+static inline void epever_decode_load(const uint16_t load[EPEVER_LOAD_LEN],
+				      struct epever_reading *out)
+{
+	out->load_voltage_v = load[0] / 100.0f;
+	out->load_current_a = load[1] / 100.0f;
 }
 
 #ifdef __cplusplus

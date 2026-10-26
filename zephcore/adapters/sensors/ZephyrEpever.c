@@ -46,6 +46,7 @@ static volatile size_t s_rx_len;
 static struct epever_reading s_reading;
 static int64_t s_stamp_ms;
 static bool s_valid;
+static bool s_has_load;
 static int s_init_rc = -EAGAIN;
 static uint32_t s_polls;
 static uint32_t s_answers;
@@ -143,12 +144,17 @@ static void poll_once(void)
 {
 	uint16_t pv_block[EPEVER_PV_BLOCK_LEN];
 	uint16_t temp;
+	uint16_t load[EPEVER_LOAD_LEN];
+	int load_rc = -EAGAIN;
 
 	bus_active(true);
 	int rc = read_input_regs(EPEVER_REG_PV_BLOCK, pv_block, EPEVER_PV_BLOCK_LEN);
 
 	if (rc == 0) {
 		rc = read_input_regs(EPEVER_REG_BATT_TEMP, &temp, 1);
+	}
+	if (rc == 0) {
+		load_rc = read_input_regs(EPEVER_REG_LOAD, load, EPEVER_LOAD_LEN);
 	}
 	/* Let a trailing byte land before the receiver stops. */
 	k_msleep(FRAME_GAP_MS);
@@ -165,6 +171,10 @@ static void poll_once(void)
 				CONFIG_ZEPHCORE_EPEVER_UNIT_ID);
 		}
 		epever_decode(pv_block, temp, &s_reading);
+		s_has_load = load_rc == 0;
+		if (s_has_load) {
+			epever_decode_load(load, &s_reading);
+		}
 		s_stamp_ms = k_uptime_get();
 		s_valid = true;
 	} else if (s_valid) {
@@ -208,7 +218,7 @@ int epever_init(void)
 	return 0;
 }
 
-bool epever_get(struct epever_reading *out)
+bool epever_get(struct epever_reading *out, bool *has_load)
 {
 	const int64_t max_age_ms = 3LL * CONFIG_ZEPHCORE_EPEVER_POLL_SEC * MSEC_PER_SEC;
 	bool ok;
@@ -217,6 +227,7 @@ bool epever_get(struct epever_reading *out)
 	ok = s_valid && (k_uptime_get() - s_stamp_ms) <= max_age_ms;
 	if (ok) {
 		*out = s_reading;
+		*has_load = s_has_load;
 	}
 	k_mutex_unlock(&s_lock);
 	return ok;
@@ -247,6 +258,11 @@ int epever_format_status(char *buf, size_t len)
 				      (double)s_reading.pv_voltage_v,
 				      (double)s_reading.pv_current_a,
 				      (double)s_reading.pv_power_w);
+		}
+		if (s_valid && s_has_load && n > 0 && (size_t)n < len) {
+			n += snprintf(buf + n, len - n, " load %.2fV %.2fA",
+				      (double)s_reading.load_voltage_v,
+				      (double)s_reading.load_current_a);
 		}
 		if (n > 0 && (size_t)n < len) {
 			n += snprintf(buf + n, len - n, " rx %u:", (unsigned)s_last_raw_len);

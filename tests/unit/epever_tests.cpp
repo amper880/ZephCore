@@ -89,3 +89,11 @@ TEST(modbus_exception, "UNIT-EPEVER-006", "An exception answer returns its code;
     bad.back() ^= 0xFF;
     CHECK(modbus_rtu_find_read_answer(bad.data(), bad.size(), 1, 0x04, 1, &reg) == MODBUS_RTU_NOT_FOUND);
 }
+
+TEST(epever_decode_load, "UNIT-EPEVER-007", "Load output registers decode x100") {
+    const uint16_t load[EPEVER_LOAD_LEN] = {1328, 47};
+    struct epever_reading r = {};
+    epever_decode_load(load, &r);
+    CHECK(near(r.load_voltage_v, 13.28f));
+    CHECK(near(r.load_current_a, 0.47f));
+}

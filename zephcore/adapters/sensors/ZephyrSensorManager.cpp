@@ -76,10 +76,12 @@ bool ZephyrSensorManager::querySensors(uint8_t requester_permissions, CayenneLPP
 			}
 		}
 #ifdef CONFIG_ZEPHCORE_EPEVER
-		/* Charge controller after the sensors: battery, then PV. */
+		/* Charge controller after the sensors: battery, PV, then the load
+		 * output when the controller reports it. */
 		struct epever_reading e;
+		bool has_load;
 
-		if (epever_get(&e)) {
+		if (epever_get(&e, &has_load)) {
 			uint8_t batt_ch = next_available_channel++;
 			uint8_t pv_ch = next_available_channel++;
 
@@ -89,6 +91,12 @@ bool ZephyrSensorManager::querySensors(uint8_t requester_permissions, CayenneLPP
 			telemetry.addVoltage(pv_ch, e.pv_voltage_v);
 			telemetry.addCurrent(pv_ch, e.pv_current_a);
 			telemetry.addPower(pv_ch, e.pv_power_w);
+			if (has_load) {
+				uint8_t load_ch = next_available_channel++;
+
+				telemetry.addVoltage(load_ch, e.load_voltage_v);
+				telemetry.addCurrent(load_ch, e.load_current_a);
+			}
 		}
 #endif
 	}

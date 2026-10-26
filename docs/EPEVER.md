@@ -19,7 +19,7 @@ A board without one stops the build with an error.
 
 ## What is read
 
-Every `ZEPHCORE_EPEVER_POLL_SEC` (default 60 s) a low-priority thread sends two Modbus RTU
+Every `ZEPHCORE_EPEVER_POLL_SEC` (default 60 s) a low-priority thread sends three Modbus RTU
 requests (function 0x04, unit `ZEPHCORE_EPEVER_UNIT_ID`, default 1, 115200 8N1):
 
 | Register | Value | Telemetry |
@@ -29,10 +29,14 @@ requests (function 0x04, unit `ZEPHCORE_EPEVER_UNIT_ID`, default 1, 115200 8N1):
 | 0x3102/0x3103 | PV power (low/high) | PV channel, power (1 W steps) |
 | 0x3104 | Battery voltage | battery channel, voltage |
 | 0x3105 | Battery charging current | battery channel, current |
+| 0x310C | Load output voltage | load channel, voltage |
+| 0x310D | Load output current | load channel, current |
 | 0x3110 | Battery temperature (signed) | battery channel, temperature |
 
-The two channels follow the I2C sensors: with an SHT40 and an INA3221 fitted, channel 2 is the
-SHT40, 3 to 5 the INA3221, 6 the battery and 7 the PV side. Telemetry carries the last reading
+The controller's channels follow the I2C sensors: battery, PV, then the load output. With an
+SHT40 and an INA3221 fitted, channel 2 is the SHT40, 3 to 5 the INA3221, 6 the battery, 7 the PV
+side and 8 the load; with neither, the battery is channel 2. A controller that refuses the load
+registers still reports the battery and PV channels. Telemetry carries the last reading
 only while it is younger than three poll periods; a controller that is missing or not answering
 is simply left out, and found again on a later poll. The request follows the existing
 permissions: guests get battery and MCU temperature only, as before.
